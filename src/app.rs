@@ -63,6 +63,16 @@ impl App {
     pub fn select_previous(&mut self) {
         self.todo_list.state.select_previous();
     }
+
+    pub fn toggle_status(&mut self) {
+        if let Some(i) = self.todo_list.state.selected() {
+            self.todo_list.items[i].status = match self.todo_list.items[i].status {
+                Status::ToDo => Status::InProgress,
+                Status::InProgress => Status::Done,
+                Status::Done => Status::ToDo,
+            }
+        }
+    }
 }
 
 impl Default for App {

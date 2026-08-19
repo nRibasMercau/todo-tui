@@ -39,9 +39,8 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
 
 fn status_icon(status: Status) -> &'static str {
     match status {
-        Status::ToDo => "○",
-        Status::InProgress => "◐",
-        Status::Done => "●",
+        Status::ToDo | Status::InProgress => "□",
+        Status::Done => "✓",
     }
 }
 
