@@ -1,5 +1,6 @@
 mod footer;
 mod todo_list;
+mod todo_popup;
 
 use ratatui::{
     Frame,
@@ -18,4 +19,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     let footer_area = layout[1];
     todo_list::render(app, frame, list_area);
     footer::render(frame, footer_area);
+
+    if let Some(popup) = &app.popup {
+        todo_popup::render(popup, frame);
+    }
 }

@@ -5,6 +5,7 @@ use std::fmt;
 pub struct App {
     pub should_quit: bool,
     pub todo_list: TodoList,
+    pub popup: Option<TodoPopup>,
 }
 
 #[derive(Debug)]
@@ -26,6 +27,24 @@ pub enum Status {
     ToDo,
     InProgress,
     Done,
+}
+
+#[derive(Debug, Default)]
+pub enum PopupField {
+    #[default]
+    Todo,
+    Info,
+    Status,
+    Tag,
+}
+
+#[derive(Debug)]
+pub struct TodoPopup {
+    pub todo: String,
+    pub info: String,
+    pub status: Status,
+    pub tag: String,
+    pub focus_field: PopupField,
 }
 
 impl fmt::Display for Status {
@@ -73,6 +92,20 @@ impl App {
             }
         }
     }
+
+    pub fn open_todo_popup(&mut self) {
+        if let Some(i) = self.todo_list.state.selected() {
+            let item = &self.todo_list.items[i];
+
+            self.popup = Some(TodoPopup {
+                todo: item.todo.clone(),
+                info: item.info.clone(),
+                status: item.status,
+                tag: item.tag.clone(),
+                focus_field: PopupField::Todo,
+            });
+        }
+    }
 }
 
 impl Default for App {
@@ -94,6 +127,7 @@ impl Default for App {
                     "rust",
                 ),
             ]),
+            popup: None,
         }
     }
 }
