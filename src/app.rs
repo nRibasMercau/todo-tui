@@ -1,5 +1,9 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{layout::Offset, widgets::ListState};
+use ratatui::{
+    layout::{Offset, Position, Rect},
+    prelude::*,
+    widgets::{Block, BorderType, Borders, ListState, Padding},
+};
 use serde::Serialize;
 use std::fmt;
 
@@ -8,6 +12,7 @@ pub struct App {
     pub should_quit: bool,
     pub todo_list: TodoList,
     pub popup: Option<TodoPopup>,
+    pub error_message: Option<String>,
 }
 
 #[derive(Debug)]
@@ -29,6 +34,7 @@ pub struct StringField {
     #[serde(skip)]
     pub label: &'static str,
     pub value: String,
+    pub cursor: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -47,31 +53,69 @@ pub enum Focus {
     Tag,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug)]
 pub struct TodoPopup {
     pub todo: StringField,
     pub info: StringField,
-    #[serde(skip)]
     pub status: Status,
     pub tag: StringField,
-    #[serde(skip)]
     pub focus: Focus,
+    pub editing: Option<usize>,
+}
+
+#[derive(Debug)]
+pub enum TodoListError {
+    InvalidIndex,
+}
+
+impl Status {
+    pub fn next(&self) -> Self {
+        match self {
+            Status::ToDo => Status::InProgress,
+            Status::InProgress => Status::Done,
+            Status::Done => Status::ToDo,
+        }
+    }
+
+    pub fn previous(&self) -> Self {
+        match self {
+            Status::ToDo => Status::Done,
+            Status::InProgress => Status::ToDo,
+            Status::Done => Status::InProgress,
+        }
+    }
 }
 
 impl StringField {
-    fn new(label: &'static str, value: impl Into<String>) -> Self {
+    pub fn new(label: &'static str, value: impl Into<String>) -> Self {
+        let value = value.into();
         Self {
             label,
-            value: value.into(),
+            cursor: value.len(),
+            value,
+        }
+    }
+
+    pub fn blank(label: &'static str) -> Self {
+        Self {
+            label,
+            value: String::new(),
+            cursor: 0,
         }
     }
 
     /// Handle input events for string input
-    fn on_key_press(&mut self, event: KeyEvent) {
+    pub fn on_key_press(&mut self, event: KeyEvent) {
         match event.code {
-            KeyCode::Char(c) => self.value.push(c),
+            KeyCode::Char(c) => {
+                self.value.insert(self.cursor, c);
+                self.cursor += 1;
+            }
             KeyCode::Backspace => {
-                self.value.pop();
+                if self.cursor > 0 {
+                    self.cursor -= 1;
+                    self.value.remove(self.cursor);
+                }
             }
             _ => {}
         }
@@ -80,6 +124,39 @@ impl StringField {
     pub fn cursor_offset(&self) -> Offset {
         let x = (self.label.len() + self.value.len()) as i32;
         Offset::new(x, 0)
+    }
+
+    pub fn cursor_left(&mut self) {
+        if self.cursor > 0 {
+            self.cursor -= 1;
+        }
+    }
+
+    pub fn cursor_right(&mut self) {
+        if self.cursor < self.value.len() {
+            self.cursor += 1;
+        }
+    }
+
+    pub fn cursor_position(&self, area: Rect) -> Position {
+        #[allow(unused_variables)]
+        let [label_area, value_area] = area.layout(&Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Min(3),
+        ]));
+
+        let value_block = Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(Style::default())
+            .padding(Padding::horizontal(1));
+
+        let value_inner = value_block.inner(value_area);
+
+        Position {
+            x: value_inner.x + self.cursor as u16,
+            y: value_inner.y,
+        }
     }
 }
 
@@ -102,21 +179,23 @@ impl fmt::Display for Status {
 impl TodoPopup {
     fn new() -> Self {
         Self {
-            todo: StringField::new("To do", ""),
-            info: StringField::new("Description", ""),
-            tag: StringField::new("Proyect", ""),
+            todo: StringField::blank("To do"),
+            info: StringField::blank("Description"),
+            tag: StringField::blank("Proyect"),
             status: Status::ToDo,
             focus: Focus::Todo,
+            editing: None,
         }
     }
 
-    fn from_todo(todo: &TodoItem) -> Self {
+    fn from_todo(todo: &TodoItem, index: usize) -> Self {
         Self {
             todo: StringField::new("To do", todo.todo.to_string()),
             info: StringField::new("Description", todo.info.to_string()),
             tag: StringField::new("Proyect", todo.tag.to_string()),
-            status: todo.status.clone(),
+            status: todo.status,
             focus: Focus::Todo,
+            editing: Some(index),
         }
     }
 
@@ -135,6 +214,15 @@ impl TodoPopup {
             Focus::Info => self.focus = Focus::Todo,
             Focus::Status => self.focus = Focus::Info,
             Focus::Tag => self.focus = Focus::Status,
+        }
+    }
+
+    pub fn submit(&mut self) -> TodoItem {
+        TodoItem {
+            todo: StringField::new("To do", self.todo.to_string()),
+            info: StringField::new("Description", self.info.to_string()),
+            status: self.status,
+            tag: StringField::new("Proyect", self.tag.to_string()),
         }
     }
 }
@@ -165,21 +253,13 @@ impl App {
         self.todo_list.state.select_previous();
     }
 
-    pub fn toggle_status(&mut self) {
-        if let Some(i) = self.todo_list.state.selected() {
-            self.todo_list.items[i].status = match self.todo_list.items[i].status {
-                Status::ToDo => Status::InProgress,
-                Status::InProgress => Status::Done,
-                Status::Done => Status::ToDo,
-            }
-        }
-    }
-
-    pub fn open_todo_popup(&mut self) {
-        if let Some(i) = self.todo_list.state.selected() {
-            let item = &self.todo_list.items[i];
-
-            self.popup = Some(TodoPopup::from_todo(item));
+    pub fn open_todo_popup(&mut self, item: Option<usize>) {
+        self.error_message = None;
+        if let Some(item) = item {
+            let todo_item = &self.todo_list.items[item];
+            self.popup = Some(TodoPopup::from_todo(todo_item, item));
+        } else {
+            self.popup = Some(TodoPopup::new());
         }
     }
 }
@@ -209,6 +289,7 @@ impl Default for App {
                 ),
             ]),
             popup: None,
+            error_message: None,
         }
     }
 }
@@ -245,10 +326,27 @@ impl TodoItem {
     }
 
     pub fn toggle_status(&mut self) {
-        self.status = match self.status {
-            Status::ToDo => Status::InProgress,
-            Status::InProgress => Status::Done,
-            Status::Done => Status::ToDo,
+        self.status = self.status.next();
+    }
+}
+
+impl TodoList {
+    pub fn replace_todo(&mut self, todo_item: TodoItem, index: usize) -> Result<(), TodoListError> {
+        match self.items.get_mut(index) {
+            Some(item) => {
+                *item = todo_item;
+                Ok(())
+            }
+            None => Err(TodoListError::InvalidIndex),
         }
+    }
+    pub fn toggle_status(&mut self) {
+        if let Some(i) = self.state.selected() {
+            self.items[i].status = self.items[i].status.next()
+        }
+    }
+
+    pub fn add_todo(&mut self, todo_item: TodoItem) {
+        self.items.push(todo_item)
     }
 }
