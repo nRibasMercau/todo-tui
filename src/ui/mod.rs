@@ -24,7 +24,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         footer::render(
             frame,
             footer_area,
-            "Esc cancel     Tab move     Enter save".to_string(),
+            "Esc cancel     Tab move     Left/Right Toggle status      Enter save".to_string(),
         )
     } else {
         footer::render(
