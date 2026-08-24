@@ -20,7 +20,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             Span::raw(format!("{} ", status_icon(item.status))),
             Span::styled(format!("{} ", item.status), status_style(item.status)),
             Span::styled(format!("{}", item.todo), item_style(item.status)),
-            Span::raw(format!(" {}", item.tag)),
+            Span::raw(format!(" {}", item.proyect)),
         ]))
     });
 

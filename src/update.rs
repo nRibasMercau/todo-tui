@@ -50,7 +50,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Todo => popup.todo.on_key_press(key_event),
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
-                Focus::Tag => popup.tag.on_key_press(key_event),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
             },
 
             // Arrows toggle status in Status
@@ -58,13 +58,13 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Todo => popup.todo.cursor_left(),
                 Focus::Info => popup.info.cursor_left(),
                 Focus::Status => popup.status = popup.status.previous(),
-                Focus::Tag => popup.tag.cursor_left(),
+                Focus::Proyect => popup.proyect.cursor_left(),
             },
             KeyCode::Right => match popup.focus {
                 Focus::Todo => popup.todo.cursor_right(),
                 Focus::Info => popup.info.cursor_right(),
                 Focus::Status => popup.status = popup.status.next(),
-                Focus::Tag => popup.tag.cursor_right(),
+                Focus::Proyect => popup.proyect.cursor_right(),
             },
 
             // Enter submits the form
@@ -89,7 +89,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Todo => popup.todo.on_key_press(key_event),
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
-                Focus::Tag => popup.tag.on_key_press(key_event),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
             },
         }
     }

@@ -26,7 +26,7 @@ pub struct TodoItem {
     pub todo: StringField,
     pub info: StringField,
     pub status: Status,
-    pub tag: StringField,
+    pub proyect: StringField,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -50,7 +50,7 @@ pub enum Focus {
     Todo,
     Info,
     Status,
-    Tag,
+    Proyect,
 }
 
 #[derive(Debug)]
@@ -58,7 +58,7 @@ pub struct TodoPopup {
     pub todo: StringField,
     pub info: StringField,
     pub status: Status,
-    pub tag: StringField,
+    pub proyect: StringField,
     pub focus: Focus,
     pub editing: Option<usize>,
 }
@@ -181,7 +181,7 @@ impl TodoPopup {
         Self {
             todo: StringField::blank("To do"),
             info: StringField::blank("Description"),
-            tag: StringField::blank("Proyect"),
+            proyect: StringField::blank("Proyect"),
             status: Status::ToDo,
             focus: Focus::Todo,
             editing: None,
@@ -192,7 +192,7 @@ impl TodoPopup {
         Self {
             todo: StringField::new("To do", todo.todo.to_string()),
             info: StringField::new("Description", todo.info.to_string()),
-            tag: StringField::new("Proyect", todo.tag.to_string()),
+            proyect: StringField::new("Proyect", todo.proyect.to_string()),
             status: todo.status,
             focus: Focus::Todo,
             editing: Some(index),
@@ -203,17 +203,17 @@ impl TodoPopup {
         match &self.focus {
             Focus::Todo => self.focus = Focus::Info,
             Focus::Info => self.focus = Focus::Status,
-            Focus::Status => self.focus = Focus::Tag,
-            Focus::Tag => self.focus = Focus::Todo,
+            Focus::Status => self.focus = Focus::Proyect,
+            Focus::Proyect => self.focus = Focus::Todo,
         }
     }
 
     pub fn focus_previous(&mut self) {
         match &self.focus {
-            Focus::Todo => self.focus = Focus::Tag,
+            Focus::Todo => self.focus = Focus::Proyect,
             Focus::Info => self.focus = Focus::Todo,
             Focus::Status => self.focus = Focus::Info,
-            Focus::Tag => self.focus = Focus::Status,
+            Focus::Proyect => self.focus = Focus::Status,
         }
     }
 
@@ -222,7 +222,7 @@ impl TodoPopup {
             todo: StringField::new("To do", self.todo.to_string()),
             info: StringField::new("Description", self.info.to_string()),
             status: self.status,
-            tag: StringField::new("Proyect", self.tag.to_string()),
+            proyect: StringField::new("Proyect", self.proyect.to_string()),
         }
     }
 }
@@ -273,19 +273,19 @@ impl Default for App {
                     Status::Done,
                     StringField::new("todo", "Learn Rust"),
                     StringField::new("info", "Finish learning Rust"),
-                    StringField::new("tag", "rust"),
+                    StringField::new("proyect", "rust"),
                 ),
                 (
                     Status::InProgress,
                     StringField::new("todo", "Finish this app"),
                     StringField::new("info", "Finish this tui list app"),
-                    StringField::new("tag", "rust"),
+                    StringField::new("proyect", "rust"),
                 ),
                 (
                     Status::ToDo,
                     StringField::new("todo", "Create and push repository"),
                     StringField::new("info", "Create new git repository and upload the app"),
-                    StringField::new("tag", "rust"),
+                    StringField::new("proyect", "rust"),
                 ),
             ]),
             popup: None,
@@ -301,7 +301,7 @@ impl FromIterator<(Status, StringField, StringField, StringField)> for TodoList 
     {
         let items: Vec<TodoItem> = iter
             .into_iter()
-            .map(|(status, todo, info, tag)| TodoItem::new(status, todo, info, tag))
+            .map(|(status, todo, info, proyect)| TodoItem::new(status, todo, info, proyect))
             .collect();
 
         // State
@@ -316,12 +316,12 @@ impl FromIterator<(Status, StringField, StringField, StringField)> for TodoList 
 }
 
 impl TodoItem {
-    pub fn new(status: Status, todo: StringField, info: StringField, tag: StringField) -> Self {
+    pub fn new(status: Status, todo: StringField, info: StringField, proyect: StringField) -> Self {
         Self {
             status: status,
             todo: todo,
             info: info,
-            tag: tag,
+            proyect: proyect,
         }
     }
 

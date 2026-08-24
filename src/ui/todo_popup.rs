@@ -98,7 +98,7 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
 
     frame.render_widget(block, centered_area);
 
-    let [todo_area, info_area, status_area, tag_area] = inner_area.layout(&Layout::vertical([
+    let [todo_area, info_area, status_area, proyect_area] = inner_area.layout(&Layout::vertical([
         Constraint::Length(4),
         Constraint::Min(4),
         Constraint::Length(4),
@@ -118,21 +118,21 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
         status: todo_popup.status,
         is_focused: todo_popup.focus == Focus::Status,
     };
-    let tag_widget = StringFieldWidget {
-        string_field: &todo_popup.tag,
-        is_focused: todo_popup.focus == Focus::Tag,
+    let proyect_widget = StringFieldWidget {
+        string_field: &todo_popup.proyect,
+        is_focused: todo_popup.focus == Focus::Proyect,
     };
     frame.render_widget(todo_widget, todo_area);
     frame.render_widget(info_widget, info_area);
     frame.render_widget(status_widget, status_area);
-    frame.render_widget(tag_widget, tag_area);
+    frame.render_widget(proyect_widget, proyect_area);
 
     // Cursor position based on focus
     // In case of focus on Status, the cursor is hidden
     let cursor_position = match &todo_popup.focus {
         Focus::Todo => Some(todo_popup.todo.cursor_position(todo_area)),
         Focus::Info => Some(todo_popup.info.cursor_position(info_area)),
-        Focus::Tag => Some(todo_popup.tag.cursor_position(tag_area)),
+        Focus::Proyect => Some(todo_popup.proyect.cursor_position(proyect_area)),
         Focus::Status => None,
     };
     if let Some(position) = cursor_position {
