@@ -1,10 +1,10 @@
+use chrono::NaiveDate;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Offset, Position, Rect},
     prelude::*,
     widgets::{Block, BorderType, Borders, ListState, Padding},
 };
-use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug)]
@@ -27,11 +27,11 @@ pub struct TodoItem {
     pub info: StringField,
     pub status: Status,
     pub proyect: StringField,
+    pub due_date: Option<NaiveDate>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct StringField {
-    #[serde(skip)]
     pub label: &'static str,
     pub value: String,
     pub cursor: usize,
@@ -59,6 +59,7 @@ pub struct TodoPopup {
     pub info: StringField,
     pub status: Status,
     pub proyect: StringField,
+    pub due_date: Option<NaiveDate>,
     pub focus: Focus,
     pub editing: Option<usize>,
 }
@@ -183,6 +184,7 @@ impl TodoPopup {
             info: StringField::blank("Description"),
             proyect: StringField::blank("Proyect"),
             status: Status::ToDo,
+            due_date: None,
             focus: Focus::Todo,
             editing: None,
         }
@@ -194,6 +196,7 @@ impl TodoPopup {
             info: StringField::new("Description", todo.info.to_string()),
             proyect: StringField::new("Proyect", todo.proyect.to_string()),
             status: todo.status,
+            due_date: todo.due_date,
             focus: Focus::Todo,
             editing: Some(index),
         }
@@ -223,6 +226,7 @@ impl TodoPopup {
             info: StringField::new("Description", self.info.to_string()),
             status: self.status,
             proyect: StringField::new("Proyect", self.proyect.to_string()),
+            due_date: self.due_date,
         }
     }
 }
@@ -274,18 +278,21 @@ impl Default for App {
                     StringField::new("todo", "Learn Rust"),
                     StringField::new("info", "Finish learning Rust"),
                     StringField::new("proyect", "rust"),
+                    Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
                 ),
                 (
                     Status::InProgress,
                     StringField::new("todo", "Finish this app"),
                     StringField::new("info", "Finish this tui list app"),
                     StringField::new("proyect", "rust"),
+                    None,
                 ),
                 (
                     Status::ToDo,
                     StringField::new("todo", "Create and push repository"),
                     StringField::new("info", "Create new git repository and upload the app"),
                     StringField::new("proyect", "rust"),
+                    None,
                 ),
             ]),
             popup: None,
@@ -294,14 +301,32 @@ impl Default for App {
     }
 }
 
-impl FromIterator<(Status, StringField, StringField, StringField)> for TodoList {
+impl
+    FromIterator<(
+        Status,
+        StringField,
+        StringField,
+        StringField,
+        Option<NaiveDate>,
+    )> for TodoList
+{
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = (Status, StringField, StringField, StringField)>,
+        I: IntoIterator<
+            Item = (
+                Status,
+                StringField,
+                StringField,
+                StringField,
+                Option<NaiveDate>,
+            ),
+        >,
     {
         let items: Vec<TodoItem> = iter
             .into_iter()
-            .map(|(status, todo, info, proyect)| TodoItem::new(status, todo, info, proyect))
+            .map(|(status, todo, info, proyect, due_date)| {
+                TodoItem::new(status, todo, info, proyect, due_date)
+            })
             .collect();
 
         // State
@@ -316,12 +341,19 @@ impl FromIterator<(Status, StringField, StringField, StringField)> for TodoList 
 }
 
 impl TodoItem {
-    pub fn new(status: Status, todo: StringField, info: StringField, proyect: StringField) -> Self {
+    pub fn new(
+        status: Status,
+        todo: StringField,
+        info: StringField,
+        proyect: StringField,
+        due_date: Option<NaiveDate>,
+    ) -> Self {
         Self {
             status: status,
             todo: todo,
             info: info,
             proyect: proyect,
+            due_date: due_date,
         }
     }
 

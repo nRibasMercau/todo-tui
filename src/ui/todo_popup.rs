@@ -98,6 +98,7 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
 
     frame.render_widget(block, centered_area);
 
+    // TODO: add widget to edit due_date
     let [todo_area, info_area, status_area, proyect_area] = inner_area.layout(&Layout::vertical([
         Constraint::Length(4),
         Constraint::Min(4),

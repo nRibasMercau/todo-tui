@@ -16,11 +16,21 @@ const DONE_ITEM_STYLE: Style = Style::new().add_modifier(Modifier::CROSSED_OUT);
 
 pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     let items = app.todo_list.items.iter().map(|item| {
+        let due_date = match item.due_date {
+            Some(date) => date.to_string(),
+            None => " ".to_string(),
+        };
+
         ListItem::new(Line::from(vec![
             Span::raw(format!("{} ", status_icon(item.status))),
-            Span::styled(format!("{} ", item.status), status_style(item.status)),
-            Span::styled(format!("{}", item.todo), item_style(item.status)),
-            Span::raw(format!(" {}", item.proyect)),
+            Span::styled(
+                format!("{} ", item.status.to_string()),
+                status_style(item.status),
+            ),
+            Span::styled(format!("{}", item.todo.value), item_style(item.status)),
+            Span::raw(format!(" {} ", item.proyect.value)),
+            //TODO: style due_date: if date is overdue, color should be red
+            Span::raw(format!("{}", due_date)),
         ]))
     });
 
