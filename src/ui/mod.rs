@@ -1,3 +1,4 @@
+pub mod calendar;
 mod footer;
 mod todo_list;
 mod todo_popup;

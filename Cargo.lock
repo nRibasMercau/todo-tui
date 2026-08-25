@@ -1624,6 +1624,7 @@ dependencies = [
  "color-eyre",
  "crossterm",
  "ratatui",
+ "time",
 ]
 
 [[package]]

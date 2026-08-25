@@ -1,3 +1,4 @@
+use chrono::Local;
 use chrono::NaiveDate;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -50,6 +51,7 @@ pub enum Focus {
     Todo,
     Info,
     Status,
+    DueDate,
     Proyect,
 }
 
@@ -62,6 +64,7 @@ pub struct TodoPopup {
     pub due_date: Option<NaiveDate>,
     pub focus: Focus,
     pub editing: Option<usize>,
+    pub calendar_date: NaiveDate,
 }
 
 #[derive(Debug)]
@@ -187,6 +190,7 @@ impl TodoPopup {
             due_date: None,
             focus: Focus::Todo,
             editing: None,
+            calendar_date: Local::now().date_naive(),
         }
     }
 
@@ -199,6 +203,10 @@ impl TodoPopup {
             due_date: todo.due_date,
             focus: Focus::Todo,
             editing: Some(index),
+            calendar_date: match todo.due_date {
+                Some(date) => date,
+                None => Local::now().date_naive(),
+            },
         }
     }
 
@@ -206,7 +214,8 @@ impl TodoPopup {
         match &self.focus {
             Focus::Todo => self.focus = Focus::Info,
             Focus::Info => self.focus = Focus::Status,
-            Focus::Status => self.focus = Focus::Proyect,
+            Focus::Status => self.focus = Focus::DueDate,
+            Focus::DueDate => self.focus = Focus::Proyect,
             Focus::Proyect => self.focus = Focus::Todo,
         }
     }
@@ -216,7 +225,8 @@ impl TodoPopup {
             Focus::Todo => self.focus = Focus::Proyect,
             Focus::Info => self.focus = Focus::Todo,
             Focus::Status => self.focus = Focus::Info,
-            Focus::Proyect => self.focus = Focus::Status,
+            Focus::DueDate => self.focus = Focus::Status,
+            Focus::Proyect => self.focus = Focus::DueDate,
         }
     }
 

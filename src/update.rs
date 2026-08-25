@@ -1,4 +1,5 @@
 use crate::app::{App, Focus};
+use crate::ui::calendar;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /*
@@ -45,11 +46,11 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 }
             }
 
-            // Spacebar adds a space in StringField, does nothing status in Status
             KeyCode::Char(' ') => match popup.focus {
                 Focus::Todo => popup.todo.on_key_press(key_event),
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
+                Focus::DueDate => {}
                 Focus::Proyect => popup.proyect.on_key_press(key_event),
             },
 
@@ -58,29 +59,88 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Todo => popup.todo.cursor_left(),
                 Focus::Info => popup.info.cursor_left(),
                 Focus::Status => popup.status = popup.status.previous(),
+                Focus::DueDate => {}
                 Focus::Proyect => popup.proyect.cursor_left(),
             },
             KeyCode::Right => match popup.focus {
                 Focus::Todo => popup.todo.cursor_right(),
                 Focus::Info => popup.info.cursor_right(),
                 Focus::Status => popup.status = popup.status.next(),
+                Focus::DueDate => {}
                 Focus::Proyect => popup.proyect.cursor_right(),
+            },
+
+            KeyCode::Char('p') => match popup.focus {
+                Focus::Todo => popup.todo.on_key_press(key_event),
+                Focus::Info => popup.info.on_key_press(key_event),
+                Focus::Status => {}
+                Focus::DueDate => popup.calendar_date = calendar::prev_month(popup.calendar_date),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
+            },
+
+            KeyCode::Char('n') => match popup.focus {
+                Focus::Todo => popup.todo.on_key_press(key_event),
+                Focus::Info => popup.info.on_key_press(key_event),
+                Focus::Status => {}
+                Focus::DueDate => popup.calendar_date = calendar::next_month(popup.calendar_date),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
+            },
+
+            KeyCode::Char('j') => match popup.focus {
+                Focus::Todo => popup.todo.on_key_press(key_event),
+                Focus::Info => popup.info.on_key_press(key_event),
+                Focus::Status => {}
+                Focus::DueDate => popup.calendar_date = calendar::move_down(popup.calendar_date),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
+            },
+
+            KeyCode::Char('k') => match popup.focus {
+                Focus::Todo => popup.todo.on_key_press(key_event),
+                Focus::Info => popup.info.on_key_press(key_event),
+                Focus::Status => {}
+                Focus::DueDate => popup.calendar_date = calendar::move_up(popup.calendar_date),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
+            },
+
+            KeyCode::Char('h') => match popup.focus {
+                Focus::Todo => popup.todo.on_key_press(key_event),
+                Focus::Info => popup.info.on_key_press(key_event),
+                Focus::Status => {}
+                Focus::DueDate => popup.calendar_date = calendar::move_left(popup.calendar_date),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
+            },
+
+            KeyCode::Char('l') => match popup.focus {
+                Focus::Todo => popup.todo.on_key_press(key_event),
+                Focus::Info => popup.info.on_key_press(key_event),
+                Focus::Status => {}
+                Focus::DueDate => popup.calendar_date = calendar::move_right(popup.calendar_date),
+                Focus::Proyect => popup.proyect.on_key_press(key_event),
             },
 
             // Enter submits the form
             KeyCode::Enter => {
-                let new_todo_item = popup.submit();
-                if let Some(index) = popup.editing {
-                    match app.todo_list.replace_todo(new_todo_item, index) {
-                        Ok(()) => app.popup = None,
-                        Err(error) => {
-                            // Save failed
-                            app.error_message = Some(format!("Error saving todo: {error:?}"))
+                match popup.focus {
+                    Focus::DueDate => {
+                        popup.due_date = Some(popup.calendar_date);
+                        popup.focus_next();
+                    }
+                    _ => {
+                        let new_todo_item = popup.submit();
+                        if let Some(index) = popup.editing {
+                            match app.todo_list.replace_todo(new_todo_item, index) {
+                                Ok(()) => app.popup = None,
+                                Err(error) => {
+                                    // Save failed
+                                    app.error_message =
+                                        Some(format!("Error saving todo: {error:?}"))
+                                }
+                            }
+                        } else {
+                            app.todo_list.add_todo(new_todo_item);
+                            app.popup = None
                         }
                     }
-                } else {
-                    app.todo_list.add_todo(new_todo_item);
-                    app.popup = None
                 }
             }
 
@@ -89,6 +149,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Todo => popup.todo.on_key_press(key_event),
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
+                Focus::DueDate => {}
                 Focus::Proyect => popup.proyect.on_key_press(key_event),
             },
         }

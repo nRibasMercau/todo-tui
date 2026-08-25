@@ -1,4 +1,6 @@
+use super::calendar;
 use crate::app::{Focus, Status, StringField, TodoPopup};
+use chrono::NaiveDate;
 use ratatui::{
     Frame,
     buffer::Buffer,
@@ -13,6 +15,11 @@ struct StringFieldWidget<'a> {
 
 struct StatusFieldWidget {
     status: Status,
+    is_focused: bool,
+}
+
+struct DueDateFieldWidget {
+    due_date: Option<NaiveDate>,
     is_focused: bool,
 }
 
@@ -82,6 +89,42 @@ impl Widget for StatusFieldWidget {
     }
 }
 
+impl Widget for DueDateFieldWidget {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let [label_area, value_area] = area.layout(&Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(3),
+        ]));
+
+        Line::from("Due date").bold().render(label_area, buf);
+
+        let due_date = match self.due_date {
+            Some(date) => date.to_string(),
+            None => "".to_string(),
+        };
+
+        // Yellow border when focused
+        let border_style = if self.is_focused {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default()
+        };
+
+        let value_block = Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(border_style)
+            .padding(Padding::horizontal(1));
+
+        let value_inner = value_block.inner(value_area);
+
+        value_block.render(value_area, buf);
+        Paragraph::new(due_date.to_string())
+            .alignment(Alignment::Left)
+            .render(value_inner, buf);
+    }
+}
+
 pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
     let area = frame.area();
     let centered_area = area.centered(Constraint::Percentage(60), Constraint::Percentage(60));
@@ -98,12 +141,17 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
 
     frame.render_widget(block, centered_area);
 
-    // TODO: add widget to edit due_date
-    let [todo_area, info_area, status_area, proyect_area] = inner_area.layout(&Layout::vertical([
-        Constraint::Length(4),
-        Constraint::Min(4),
-        Constraint::Length(4),
-        Constraint::Length(4),
+    let [todo_area, info_area, status_due_date_area, proyect_area] =
+        inner_area.layout(&Layout::vertical([
+            Constraint::Length(4),
+            Constraint::Min(4),
+            Constraint::Length(4),
+            Constraint::Length(4),
+        ]));
+
+    let [status_area, due_date_area] = status_due_date_area.layout(&Layout::horizontal([
+        Constraint::Percentage(50),
+        Constraint::Percentage(50),
     ]));
 
     // Form
@@ -119,6 +167,10 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
         status: todo_popup.status,
         is_focused: todo_popup.focus == Focus::Status,
     };
+    let due_date_widget = DueDateFieldWidget {
+        due_date: todo_popup.due_date,
+        is_focused: todo_popup.focus == Focus::DueDate,
+    };
     let proyect_widget = StringFieldWidget {
         string_field: &todo_popup.proyect,
         is_focused: todo_popup.focus == Focus::Proyect,
@@ -126,6 +178,7 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
     frame.render_widget(todo_widget, todo_area);
     frame.render_widget(info_widget, info_area);
     frame.render_widget(status_widget, status_area);
+    frame.render_widget(due_date_widget, due_date_area);
     frame.render_widget(proyect_widget, proyect_area);
 
     // Cursor position based on focus
@@ -135,8 +188,21 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
         Focus::Info => Some(todo_popup.info.cursor_position(info_area)),
         Focus::Proyect => Some(todo_popup.proyect.cursor_position(proyect_area)),
         Focus::Status => None,
+        Focus::DueDate => None,
     };
     if let Some(position) = cursor_position {
         frame.set_cursor_position(position);
+    }
+
+    if todo_popup.focus == Focus::DueDate {
+        let calendar_width = 60;
+        let calendar_area = Rect {
+            //x: due_date_area.x + (due_date_area.x - calendar_width) / 2,
+            x: due_date_area.x,
+            y: due_date_area.y + due_date_area.height,
+            width: calendar_width,
+            height: 10,
+        };
+        calendar::render(frame, calendar_area, todo_popup.calendar_date);
     }
 }
