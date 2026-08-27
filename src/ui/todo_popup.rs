@@ -172,8 +172,8 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
         is_focused: todo_popup.focus == Focus::DueDate,
     };
     let proyect_widget = StringFieldWidget {
-        string_field: &todo_popup.proyect,
-        is_focused: todo_popup.focus == Focus::Proyect,
+        string_field: &todo_popup.project,
+        is_focused: todo_popup.focus == Focus::Project,
     };
     frame.render_widget(todo_widget, todo_area);
     frame.render_widget(info_widget, info_area);
@@ -186,7 +186,7 @@ pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
     let cursor_position = match &todo_popup.focus {
         Focus::Todo => Some(todo_popup.todo.cursor_position(todo_area)),
         Focus::Info => Some(todo_popup.info.cursor_position(info_area)),
-        Focus::Proyect => Some(todo_popup.proyect.cursor_position(proyect_area)),
+        Focus::Project => Some(todo_popup.project.cursor_position(proyect_area)),
         Focus::Status => None,
         Focus::DueDate => None,
     };

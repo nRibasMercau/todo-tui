@@ -13,6 +13,9 @@ pub mod event;
 /// Application updater
 pub mod update;
 
+/// DB
+pub mod db;
+
 use app::App;
 use color_eyre::Result;
 use event::{Event, EventHandler};

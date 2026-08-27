@@ -28,7 +28,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 status_style(item.status),
             ),
             Span::styled(format!("{}", item.todo.value), item_style(item.status)),
-            Span::raw(format!(" {} ", item.proyect.value)),
+            Span::raw(format!(" {} ", item.project.value)),
             //TODO: style due_date: if date is overdue, color should be red
             Span::raw(format!("{}", due_date)),
         ]))

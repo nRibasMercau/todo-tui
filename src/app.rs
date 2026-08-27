@@ -27,7 +27,7 @@ pub struct TodoItem {
     pub todo: StringField,
     pub info: StringField,
     pub status: Status,
-    pub proyect: StringField,
+    pub project: StringField,
     pub due_date: Option<NaiveDate>,
 }
 
@@ -52,7 +52,7 @@ pub enum Focus {
     Info,
     Status,
     DueDate,
-    Proyect,
+    Project,
 }
 
 #[derive(Debug)]
@@ -60,7 +60,7 @@ pub struct TodoPopup {
     pub todo: StringField,
     pub info: StringField,
     pub status: Status,
-    pub proyect: StringField,
+    pub project: StringField,
     pub due_date: Option<NaiveDate>,
     pub focus: Focus,
     pub editing: Option<usize>,
@@ -185,7 +185,7 @@ impl TodoPopup {
         Self {
             todo: StringField::blank("To do"),
             info: StringField::blank("Description"),
-            proyect: StringField::blank("Proyect"),
+            project: StringField::blank("Project"),
             status: Status::ToDo,
             due_date: None,
             focus: Focus::Todo,
@@ -198,7 +198,7 @@ impl TodoPopup {
         Self {
             todo: StringField::new("To do", todo.todo.to_string()),
             info: StringField::new("Description", todo.info.to_string()),
-            proyect: StringField::new("Proyect", todo.proyect.to_string()),
+            project: StringField::new("Project", todo.project.to_string()),
             status: todo.status,
             due_date: todo.due_date,
             focus: Focus::Todo,
@@ -215,18 +215,18 @@ impl TodoPopup {
             Focus::Todo => self.focus = Focus::Info,
             Focus::Info => self.focus = Focus::Status,
             Focus::Status => self.focus = Focus::DueDate,
-            Focus::DueDate => self.focus = Focus::Proyect,
-            Focus::Proyect => self.focus = Focus::Todo,
+            Focus::DueDate => self.focus = Focus::Project,
+            Focus::Project => self.focus = Focus::Todo,
         }
     }
 
     pub fn focus_previous(&mut self) {
         match &self.focus {
-            Focus::Todo => self.focus = Focus::Proyect,
+            Focus::Todo => self.focus = Focus::Project,
             Focus::Info => self.focus = Focus::Todo,
             Focus::Status => self.focus = Focus::Info,
             Focus::DueDate => self.focus = Focus::Status,
-            Focus::Proyect => self.focus = Focus::DueDate,
+            Focus::Project => self.focus = Focus::DueDate,
         }
     }
 
@@ -235,7 +235,7 @@ impl TodoPopup {
             todo: StringField::new("To do", self.todo.to_string()),
             info: StringField::new("Description", self.info.to_string()),
             status: self.status,
-            proyect: StringField::new("Proyect", self.proyect.to_string()),
+            project: StringField::new("Project", self.project.to_string()),
             due_date: self.due_date,
         }
     }
@@ -287,21 +287,21 @@ impl Default for App {
                     Status::Done,
                     StringField::new("todo", "Learn Rust"),
                     StringField::new("info", "Finish learning Rust"),
-                    StringField::new("proyect", "rust"),
+                    StringField::new("project", "rust"),
                     Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
                 ),
                 (
                     Status::InProgress,
                     StringField::new("todo", "Finish this app"),
                     StringField::new("info", "Finish this tui list app"),
-                    StringField::new("proyect", "rust"),
+                    StringField::new("project", "rust"),
                     None,
                 ),
                 (
                     Status::ToDo,
                     StringField::new("todo", "Create and push repository"),
                     StringField::new("info", "Create new git repository and upload the app"),
-                    StringField::new("proyect", "rust"),
+                    StringField::new("project", "rust"),
                     None,
                 ),
             ]),
@@ -334,8 +334,8 @@ impl
     {
         let items: Vec<TodoItem> = iter
             .into_iter()
-            .map(|(status, todo, info, proyect, due_date)| {
-                TodoItem::new(status, todo, info, proyect, due_date)
+            .map(|(status, todo, info, project, due_date)| {
+                TodoItem::new(status, todo, info, project, due_date)
             })
             .collect();
 
@@ -355,14 +355,14 @@ impl TodoItem {
         status: Status,
         todo: StringField,
         info: StringField,
-        proyect: StringField,
+        project: StringField,
         due_date: Option<NaiveDate>,
     ) -> Self {
         Self {
             status: status,
             todo: todo,
             info: info,
-            proyect: proyect,
+            project: project,
             due_date: due_date,
         }
     }

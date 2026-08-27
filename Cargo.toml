@@ -9,3 +9,4 @@ crossterm = "0.29.0"
 color-eyre = "0.6.5"
 chrono = "0.4.45"
 time = "0.3.55"
+rusqlite = { version = "0.40.2" }

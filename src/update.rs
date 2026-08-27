@@ -51,7 +51,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => {}
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             // Arrows toggle status in Status
@@ -60,14 +60,14 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.cursor_left(),
                 Focus::Status => popup.status = popup.status.previous(),
                 Focus::DueDate => {}
-                Focus::Proyect => popup.proyect.cursor_left(),
+                Focus::Project => popup.project.cursor_left(),
             },
             KeyCode::Right => match popup.focus {
                 Focus::Todo => popup.todo.cursor_right(),
                 Focus::Info => popup.info.cursor_right(),
                 Focus::Status => popup.status = popup.status.next(),
                 Focus::DueDate => {}
-                Focus::Proyect => popup.proyect.cursor_right(),
+                Focus::Project => popup.project.cursor_right(),
             },
 
             KeyCode::Char('p') => match popup.focus {
@@ -75,7 +75,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => popup.calendar_date = calendar::prev_month(popup.calendar_date),
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             KeyCode::Char('n') => match popup.focus {
@@ -83,7 +83,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => popup.calendar_date = calendar::next_month(popup.calendar_date),
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             KeyCode::Char('j') => match popup.focus {
@@ -91,7 +91,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => popup.calendar_date = calendar::move_down(popup.calendar_date),
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             KeyCode::Char('k') => match popup.focus {
@@ -99,7 +99,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => popup.calendar_date = calendar::move_up(popup.calendar_date),
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             KeyCode::Char('h') => match popup.focus {
@@ -107,7 +107,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => popup.calendar_date = calendar::move_left(popup.calendar_date),
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             KeyCode::Char('l') => match popup.focus {
@@ -115,7 +115,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => popup.calendar_date = calendar::move_right(popup.calendar_date),
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
 
             // Enter submits the form
@@ -150,7 +150,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::Info => popup.info.on_key_press(key_event),
                 Focus::Status => {}
                 Focus::DueDate => {}
-                Focus::Proyect => popup.proyect.on_key_press(key_event),
+                Focus::Project => popup.project.on_key_press(key_event),
             },
         }
     }
