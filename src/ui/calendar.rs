@@ -17,23 +17,59 @@ fn to_time_date(date: NaiveDate) -> Result<time::Date, ComponentRange> {
 
 pub fn next_month(date: NaiveDate) -> NaiveDate {
     if date.month() == 12 {
+        // If december, we can add one month and it will always work,
+        // because january also has 31 days like december
         date.with_month(1)
             .unwrap()
             .with_year(date.year() + 1)
             .unwrap()
     } else {
-        date.with_month(date.month() + 1).unwrap()
+        // For other months, we have to carefully check if the date
+        // exists in the following month
+        if let Some(date) = date.with_month(date.month() + 1) {
+            date
+        } else {
+            if let Some(date) = date
+                .checked_sub_days(Days::new(1))
+                .unwrap()
+                .with_month(date.month() + 1)
+            {
+                date
+            } else {
+                date.checked_sub_days(Days::new(3))
+                    .unwrap()
+                    .with_month(date.month() + 1)
+                    .unwrap()
+            }
+        }
     }
 }
 
 pub fn prev_month(date: NaiveDate) -> NaiveDate {
     if date.month() == 1 {
+        // If january, we can subtract one month and it will always work,
+        // because december also has 31 days like january
         date.with_month(12)
             .unwrap()
             .with_year(date.year() - 1)
             .unwrap()
     } else {
-        date.with_month(date.month() - 1).unwrap()
+        if let Some(date) = date.with_month(date.month() - 1) {
+            date
+        } else {
+            if let Some(date) = date
+                .checked_sub_days(Days::new(1))
+                .unwrap()
+                .with_month(date.month() - 1)
+            {
+                date
+            } else {
+                date.checked_sub_days(Days::new(3))
+                    .unwrap()
+                    .with_month(date.month() - 1)
+                    .unwrap()
+            }
+        }
     }
 }
 
