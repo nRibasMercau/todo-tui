@@ -38,31 +38,43 @@ impl fmt::Display for Status {
 
 #[derive(Debug)]
 pub struct TodoItem {
+    pub id: i64,
     pub todo: String,
     pub info: String,
     pub status: Status,
-    pub project: String,
+    pub project_id: Option<i64>,
     pub due_date: Option<NaiveDate>,
 }
 
 impl TodoItem {
+    pub fn toggle_status(&mut self) {
+        self.status = self.status.next();
+    }
+}
+
+#[derive(Debug)]
+pub struct NewTodoItem {
+    pub todo: String,
+    pub info: String,
+    pub status: Status,
+    pub project_id: Option<i64>,
+    pub due_date: Option<NaiveDate>,
+}
+
+impl NewTodoItem {
     pub fn new(
         status: Status,
         todo: String,
         info: String,
-        project: String,
+        project_id: Option<i64>,
         due_date: Option<NaiveDate>,
     ) -> Self {
         Self {
-            status: status,
-            todo: todo,
-            info: info,
-            project: project,
-            due_date: due_date,
+            status,
+            todo,
+            info,
+            project_id,
+            due_date,
         }
-    }
-
-    pub fn toggle_status(&mut self) {
-        self.status = self.status.next();
     }
 }

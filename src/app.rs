@@ -1,4 +1,7 @@
-use crate::models::todo::{Status, TodoItem};
+use crate::models::{
+    project::Project,
+    todo::{NewTodoItem, Status, TodoItem},
+};
 use crate::ui::todo_popup::TodoPopup;
 use chrono::NaiveDate;
 use ratatui::widgets::ListState;
@@ -7,6 +10,7 @@ use ratatui::widgets::ListState;
 pub struct App {
     pub should_quit: bool,
     pub todo_list: TodoList,
+    pub projects: Vec<Project>,
     pub popup: Option<TodoPopup>,
     pub error_message: Option<String>,
 }
@@ -52,7 +56,7 @@ impl App {
         self.error_message = None;
         if let Some(item) = item {
             let todo_item = &self.todo_list.items[item];
-            self.popup = Some(TodoPopup::from_todo(todo_item, item));
+            self.popup = Some(TodoPopup::from_todo(todo_item, item, &self));
         } else {
             self.popup = Some(TodoPopup::new());
         }
@@ -65,42 +69,55 @@ impl Default for App {
             should_quit: false,
             todo_list: TodoList::from_iter([
                 (
-                    Status::Done,
+                    1,
                     String::from("Learn Rust"),
                     String::from("Finish learning Rust"),
-                    String::from("rust"),
+                    Status::Done,
+                    Some(1),
                     Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
                 ),
                 (
-                    Status::InProgress,
+                    2,
                     String::from("Finish this app"),
                     String::from("Finish this tui list app"),
-                    String::from("rust"),
+                    Status::InProgress,
+                    Some(1),
                     None,
                 ),
                 (
-                    Status::ToDo,
+                    3,
                     String::from("Create and push repository"),
                     String::from("Create new git repository and upload the app"),
-                    String::from("rust"),
+                    Status::ToDo,
+                    Some(1),
                     None,
                 ),
             ]),
+            projects: vec![Project {
+                id: 1,
+                name: String::from("rust"),
+                archive: false,
+            }],
             popup: None,
             error_message: None,
         }
     }
 }
 
-impl FromIterator<(Status, String, String, String, Option<NaiveDate>)> for TodoList {
+impl FromIterator<(i64, String, String, Status, Option<i64>, Option<NaiveDate>)> for TodoList {
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = (Status, String, String, String, Option<NaiveDate>)>,
+        I: IntoIterator<Item = (i64, String, String, Status, Option<i64>, Option<NaiveDate>)>,
     {
         let items: Vec<TodoItem> = iter
             .into_iter()
-            .map(|(status, todo, info, project, due_date)| {
-                TodoItem::new(status, todo, info, project, due_date)
+            .map(|(id, todo, info, status, project_id, due_date)| TodoItem {
+                id,
+                todo,
+                info,
+                status,
+                project_id,
+                due_date,
             })
             .collect();
 
@@ -116,8 +133,8 @@ impl FromIterator<(Status, String, String, String, Option<NaiveDate>)> for TodoL
 }
 
 impl TodoList {
-    pub fn replace_todo(&mut self, todo_item: TodoItem, index: usize) -> Result<(), TodoListError> {
-        match self.items.get_mut(index) {
+    pub fn replace_todo(&mut self, todo_item: TodoItem) -> Result<(), TodoListError> {
+        match self.items.iter_mut().find(|i| i.id == todo_item.id) {
             Some(item) => {
                 *item = todo_item;
                 Ok(())
@@ -125,13 +142,22 @@ impl TodoList {
             None => Err(TodoListError::InvalidIndex),
         }
     }
+
     pub fn toggle_status(&mut self) {
         if let Some(i) = self.state.selected() {
             self.items[i].status = self.items[i].status.next()
         }
     }
 
-    pub fn add_todo(&mut self, todo_item: TodoItem) {
-        self.items.push(todo_item)
+    pub fn add_todo(&mut self, todo_item: NewTodoItem) {
+        let new_todo_item = TodoItem {
+            id: 50,
+            todo: todo_item.todo,
+            info: todo_item.info,
+            status: todo_item.status,
+            project_id: todo_item.project_id,
+            due_date: todo_item.due_date,
+        };
+        self.items.push(new_todo_item);
     }
 }

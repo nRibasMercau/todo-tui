@@ -43,9 +43,9 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
             } else {
                 let popup = app.popup.take().unwrap();
                 let editing = popup.editing;
-                let new_todo_item = popup.submit();
                 if let Some(index) = editing {
-                    match app.todo_list.replace_todo(new_todo_item, index) {
+                    let todo_item = popup.submit_edit(app);
+                    match app.todo_list.replace_todo(todo_item) {
                         Ok(()) => app.popup = None,
                         Err(error) => {
                             // Save failed
@@ -53,6 +53,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                         }
                     }
                 } else {
+                    let new_todo_item = popup.submit_new(app);
                     app.todo_list.add_todo(new_todo_item);
                     app.popup = None
                 }

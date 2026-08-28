@@ -1,6 +1,7 @@
 use super::calendar;
+use crate::app::App;
 use crate::models::todo::Status;
-use crate::models::todo::TodoItem;
+use crate::models::todo::{NewTodoItem, TodoItem};
 use crate::ui::fields::StringField;
 use chrono::{Local, NaiveDate};
 use ratatui::{
@@ -139,6 +140,7 @@ pub enum Focus {
 
 #[derive(Debug)]
 pub struct TodoPopup {
+    pub id: Option<i64>,
     pub todo: StringField,
     pub info: StringField,
     pub status: Status,
@@ -152,6 +154,7 @@ pub struct TodoPopup {
 impl TodoPopup {
     pub fn new() -> Self {
         Self {
+            id: None,
             todo: StringField::blank("To do"),
             info: StringField::blank("Description"),
             project: StringField::blank("Project"),
@@ -163,7 +166,7 @@ impl TodoPopup {
         }
     }
 
-    pub fn from_todo(todo: &TodoItem, index: usize) -> Self {
+    pub fn from_todo(todo: &TodoItem, index: usize, app: &App) -> Self {
         /*
          * TodoItem (borrowed)
          *   │
@@ -173,10 +176,21 @@ impl TodoPopup {
          *   ├── Status ───────→ copy ───→ Status
          *   └── NaiveDate ────→ copy ───→ NaiveDate
          */
+        // TODO: move to db query
+        let project_name = if let Some(project_id) = todo.project_id {
+            match app.projects.iter().find(|p| p.id == project_id) {
+                Some(project) => project.name.to_string(),
+                None => "".to_string(),
+            }
+        } else {
+            "".to_string()
+        };
+
         Self {
+            id: Some(todo.id),
             todo: StringField::new("To do", todo.todo.clone()),
             info: StringField::new("Description", todo.info.clone()),
-            project: StringField::new("Project", todo.project.clone()),
+            project: StringField::new("Project", project_name),
             status: todo.status,
             due_date: todo.due_date,
             focus: Focus::Todo,
@@ -208,12 +222,39 @@ impl TodoPopup {
         }
     }
 
-    pub fn submit(self) -> TodoItem {
+    pub fn submit_edit(self, app: &App) -> TodoItem {
+        let project_name = self.project.stringfield_to_string();
+
+        let project_id = app
+            .projects
+            .iter()
+            .find(|p| p.name == project_name)
+            .map(|p| p.id);
+
         TodoItem {
+            id: self.id.unwrap(),
             todo: self.todo.stringfield_to_string(),
             info: self.info.stringfield_to_string(),
             status: self.status,
-            project: self.project.stringfield_to_string(),
+            project_id: project_id,
+            due_date: self.due_date,
+        }
+    }
+
+    pub fn submit_new(self, app: &App) -> NewTodoItem {
+        let project_name = self.project.stringfield_to_string();
+
+        let project_id = app
+            .projects
+            .iter()
+            .find(|p| p.name == project_name)
+            .map(|p| p.id);
+
+        NewTodoItem {
+            todo: self.todo.stringfield_to_string(),
+            info: self.info.stringfield_to_string(),
+            status: self.status,
+            project_id,
             due_date: self.due_date,
         }
     }
