@@ -164,10 +164,19 @@ impl TodoPopup {
     }
 
     pub fn from_todo(todo: &TodoItem, index: usize) -> Self {
+        /*
+         * TodoItem (borrowed)
+         *   │
+         *   ├── String ──────→ clone ──→ StringField
+         *   ├── String ──────→ clone ──→ StringField
+         *   ├── String ──────→ clone ──→ StringField
+         *   ├── Status ───────→ copy ───→ Status
+         *   └── NaiveDate ────→ copy ───→ NaiveDate
+         */
         Self {
-            todo: StringField::new("To do", todo.todo.to_string()),
-            info: StringField::new("Description", todo.info.to_string()),
-            project: StringField::new("Project", todo.project.to_string()),
+            todo: StringField::new("To do", todo.todo.clone()),
+            info: StringField::new("Description", todo.info.clone()),
+            project: StringField::new("Project", todo.project.clone()),
             status: todo.status,
             due_date: todo.due_date,
             focus: Focus::Todo,
@@ -199,15 +208,16 @@ impl TodoPopup {
         }
     }
 
-    pub fn submit(&mut self) -> TodoItem {
+    pub fn submit(self) -> TodoItem {
         TodoItem {
-            todo: StringField::new("To do", self.todo.to_string()),
-            info: StringField::new("Description", self.info.to_string()),
+            todo: self.todo.stringfield_to_string(),
+            info: self.info.stringfield_to_string(),
             status: self.status,
-            project: StringField::new("Project", self.project.to_string()),
+            project: self.project.stringfield_to_string(),
             due_date: self.due_date,
         }
     }
+
     pub fn render(todo_popup: &TodoPopup, frame: &mut Frame) {
         let area = frame.area();
         let centered_area = area.centered(Constraint::Percentage(60), Constraint::Percentage(60));

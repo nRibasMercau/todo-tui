@@ -31,6 +31,10 @@ impl StringField {
         }
     }
 
+    pub fn stringfield_to_string(self) -> String {
+        self.value
+    }
+
     /// Handle input events for string input
     pub fn on_key_press(&mut self, event: KeyEvent) {
         match event.code {

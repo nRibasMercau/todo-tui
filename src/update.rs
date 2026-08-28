@@ -33,6 +33,31 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
             app.popup = None;
             return;
         }
+
+        // Enter submits the form
+        KeyCode::Enter => {
+            if app.popup.as_ref().unwrap().focus == Focus::DueDate {
+                let popup = app.popup.as_mut().unwrap();
+                popup.due_date = Some(popup.calendar_date);
+                popup.focus_next();
+            } else {
+                let popup = app.popup.take().unwrap();
+                let editing = popup.editing;
+                let new_todo_item = popup.submit();
+                if let Some(index) = editing {
+                    match app.todo_list.replace_todo(new_todo_item, index) {
+                        Ok(()) => app.popup = None,
+                        Err(error) => {
+                            // Save failed
+                            app.error_message = Some(format!("Error saving todo: {error:?}"))
+                        }
+                    }
+                } else {
+                    app.todo_list.add_todo(new_todo_item);
+                    app.popup = None
+                }
+            }
+        }
         _ => {}
     }
 
@@ -118,32 +143,6 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 Focus::DueDate => popup.calendar_date = calendar::move_right(popup.calendar_date),
                 Focus::Project => popup.project.on_key_press(key_event),
             },
-
-            // Enter submits the form
-            KeyCode::Enter => {
-                match popup.focus {
-                    Focus::DueDate => {
-                        popup.due_date = Some(popup.calendar_date);
-                        popup.focus_next();
-                    }
-                    _ => {
-                        let new_todo_item = popup.submit();
-                        if let Some(index) = popup.editing {
-                            match app.todo_list.replace_todo(new_todo_item, index) {
-                                Ok(()) => app.popup = None,
-                                Err(error) => {
-                                    // Save failed
-                                    app.error_message =
-                                        Some(format!("Error saving todo: {error:?}"))
-                                }
-                            }
-                        } else {
-                            app.todo_list.add_todo(new_todo_item);
-                            app.popup = None
-                        }
-                    }
-                }
-            }
 
             // Other characters insert characters in StringField, does nothing in Status
             _ => match popup.focus {

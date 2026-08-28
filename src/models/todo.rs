@@ -1,4 +1,3 @@
-use crate::ui::fields::StringField;
 use chrono::NaiveDate;
 use std::fmt;
 
@@ -39,19 +38,19 @@ impl fmt::Display for Status {
 
 #[derive(Debug)]
 pub struct TodoItem {
-    pub todo: StringField,
-    pub info: StringField,
+    pub todo: String,
+    pub info: String,
     pub status: Status,
-    pub project: StringField,
+    pub project: String,
     pub due_date: Option<NaiveDate>,
 }
 
 impl TodoItem {
     pub fn new(
         status: Status,
-        todo: StringField,
-        info: StringField,
-        project: StringField,
+        todo: String,
+        info: String,
+        project: String,
         due_date: Option<NaiveDate>,
     ) -> Self {
         Self {

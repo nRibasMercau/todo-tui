@@ -1,5 +1,5 @@
 use crate::models::todo::{Status, TodoItem};
-use crate::ui::{fields::StringField, todo_popup::TodoPopup};
+use crate::ui::todo_popup::TodoPopup;
 use chrono::NaiveDate;
 use ratatui::widgets::ListState;
 
@@ -66,23 +66,23 @@ impl Default for App {
             todo_list: TodoList::from_iter([
                 (
                     Status::Done,
-                    StringField::new("todo", "Learn Rust"),
-                    StringField::new("info", "Finish learning Rust"),
-                    StringField::new("project", "rust"),
+                    String::from("Learn Rust"),
+                    String::from("Finish learning Rust"),
+                    String::from("rust"),
                     Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
                 ),
                 (
                     Status::InProgress,
-                    StringField::new("todo", "Finish this app"),
-                    StringField::new("info", "Finish this tui list app"),
-                    StringField::new("project", "rust"),
+                    String::from("Finish this app"),
+                    String::from("Finish this tui list app"),
+                    String::from("rust"),
                     None,
                 ),
                 (
                     Status::ToDo,
-                    StringField::new("todo", "Create and push repository"),
-                    StringField::new("info", "Create new git repository and upload the app"),
-                    StringField::new("project", "rust"),
+                    String::from("Create and push repository"),
+                    String::from("Create new git repository and upload the app"),
+                    String::from("rust"),
                     None,
                 ),
             ]),
@@ -92,26 +92,10 @@ impl Default for App {
     }
 }
 
-impl
-    FromIterator<(
-        Status,
-        StringField,
-        StringField,
-        StringField,
-        Option<NaiveDate>,
-    )> for TodoList
-{
+impl FromIterator<(Status, String, String, String, Option<NaiveDate>)> for TodoList {
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<
-            Item = (
-                Status,
-                StringField,
-                StringField,
-                StringField,
-                Option<NaiveDate>,
-            ),
-        >,
+        I: IntoIterator<Item = (Status, String, String, String, Option<NaiveDate>)>,
     {
         let items: Vec<TodoItem> = iter
             .into_iter()
