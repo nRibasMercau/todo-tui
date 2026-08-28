@@ -1,5 +1,6 @@
-use crate::app::{App, Focus};
+use crate::app::App;
 use crate::ui::calendar;
+use crate::ui::todo_popup::Focus;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /*

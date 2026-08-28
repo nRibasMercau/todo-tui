@@ -1,14 +1,13 @@
 pub mod calendar;
-mod footer;
-mod todo_list;
-mod todo_popup;
-
+pub mod fields;
+pub mod footer;
+pub mod todo_list;
+pub mod todo_popup;
+use crate::app::App;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
 };
-
-use crate::app::App;
 
 pub fn render(app: &mut App, frame: &mut Frame) {
     let layout = Layout::default()
@@ -21,7 +20,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     todo_list::render(app, frame, list_area);
 
     if let Some(popup) = &app.popup {
-        todo_popup::render(popup, frame);
+        todo_popup::TodoPopup::render(popup, frame);
         footer::render(
             frame,
             footer_area,

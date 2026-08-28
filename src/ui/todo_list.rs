@@ -6,7 +6,8 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem},
 };
 
-use crate::app::{App, Status};
+use crate::app::App;
+use crate::models::todo::Status;
 
 const HIGHLIGHT_STYLE: Style = Style::new().add_modifier(Modifier::BOLD);
 const TODO_STYLE: Style = Style::new();
