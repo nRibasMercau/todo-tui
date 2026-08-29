@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Result};
 
-fn migrate(conn: &mut Connection) -> Result<()> {
+pub fn migrate(conn: &mut Connection) -> Result<()> {
     let tx = conn.transaction()?;
 
     let version: i32 = tx.query_row("PRAGMA user_version", [], |row| row.get(0))?;

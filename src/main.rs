@@ -27,6 +27,9 @@ use tui::Tui;
 use update::update;
 
 fn main() -> Result<()> {
+    // Create database
+    db::connections::create_database()?;
+
     // Create application
     let mut app = App::new();
 
