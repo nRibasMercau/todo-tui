@@ -42,8 +42,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 popup.focus_next();
             } else {
                 let popup = app.popup.take().unwrap();
-                let editing = popup.editing;
-                if let Some(index) = editing {
+                if popup.id.is_some() {
                     let todo_item = popup.submit_edit(app);
                     match app.todo_list.replace_todo(todo_item) {
                         Ok(()) => app.popup = None,

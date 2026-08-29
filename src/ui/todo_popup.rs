@@ -147,7 +147,6 @@ pub struct TodoPopup {
     pub project: StringField,
     pub due_date: Option<NaiveDate>,
     pub focus: Focus,
-    pub editing: Option<usize>,
     pub calendar_date: NaiveDate,
 }
 
@@ -161,7 +160,6 @@ impl TodoPopup {
             status: Status::ToDo,
             due_date: None,
             focus: Focus::Todo,
-            editing: None,
             calendar_date: Local::now().date_naive(),
         }
     }
@@ -194,7 +192,6 @@ impl TodoPopup {
             status: todo.status,
             due_date: todo.due_date,
             focus: Focus::Todo,
-            editing: Some(index),
             calendar_date: match todo.due_date {
                 Some(date) => date,
                 None => Local::now().date_naive(),
