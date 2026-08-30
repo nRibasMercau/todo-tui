@@ -24,6 +24,23 @@ impl Status {
             Status::Done => Status::InProgress,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Status::ToDo => "todo",
+            Status::InProgress => "in_progress",
+            Status::Done => "done",
+        }
+    }
+
+    pub fn from_str(status: &str) -> Result<Status, String> {
+        match status {
+            "todo" => Ok(Status::ToDo),
+            "in_progress" => Ok(Status::InProgress),
+            "done" => Ok(Status::Done),
+            _ => Err(format!("Invalid status: {status}")),
+        }
+    }
 }
 
 impl fmt::Display for Status {

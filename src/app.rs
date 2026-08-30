@@ -61,6 +61,13 @@ impl App {
             self.popup = Some(TodoPopup::new());
         }
     }
+
+    pub fn find_project_id(&self, project_name: &str) -> Option<i64> {
+        self.projects
+            .iter()
+            .find(|p| p.name == project_name)
+            .map(|p| p.id)
+    }
 }
 
 impl Default for App {

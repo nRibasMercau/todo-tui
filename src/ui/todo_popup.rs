@@ -221,12 +221,7 @@ impl TodoPopup {
 
     pub fn submit_edit(self, app: &App) -> TodoItem {
         let project_name = self.project.stringfield_to_string();
-
-        let project_id = app
-            .projects
-            .iter()
-            .find(|p| p.name == project_name)
-            .map(|p| p.id);
+        let project_id = app.find_project_id(&project_name);
 
         TodoItem {
             id: self.id.unwrap(),
@@ -240,12 +235,7 @@ impl TodoPopup {
 
     pub fn submit_new(self, app: &App) -> NewTodoItem {
         let project_name = self.project.stringfield_to_string();
-
-        let project_id = app
-            .projects
-            .iter()
-            .find(|p| p.name == project_name)
-            .map(|p| p.id);
+        let project_id = app.find_project_id(&project_name);
 
         NewTodoItem {
             todo: self.todo.stringfield_to_string(),
