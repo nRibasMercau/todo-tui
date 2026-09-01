@@ -1,4 +1,5 @@
 use chrono::NaiveDate;
+use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, Value, ValueRef};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -33,7 +34,7 @@ impl Status {
         }
     }
 
-    pub fn from_str(status: &str) -> Result<Status, String> {
+    pub fn from_str(status: &str) -> Result<Self, String> {
         match status {
             "todo" => Ok(Status::ToDo),
             "in_progress" => Ok(Status::InProgress),
@@ -50,6 +51,19 @@ impl fmt::Display for Status {
             Status::InProgress => write!(f, "In Progress"),
             Status::Done => write!(f, "Done"),
         }
+    }
+}
+
+impl FromSql for Status {
+    fn column_result(value: ValueRef<'_>) -> Result<Self, FromSqlError> {
+        let status = value.as_str()?;
+        Status::from_str(status).map_err(|err| FromSqlError::Other(err.into()))
+    }
+}
+
+impl ToSql for Status {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::Owned(Value::Text(self.as_str().to_owned())))
     }
 }
 
@@ -93,5 +107,21 @@ impl NewTodoItem {
             project_id,
             due_date,
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct TodoListItem {
+    pub id: i64,
+    pub todo: String,
+    pub info: String,
+    pub status: Status,
+    pub project: Option<String>,
+    pub due_date: Option<NaiveDate>,
+}
+
+impl TodoListItem {
+    pub fn toggle_status(&mut self) {
+        self.status = self.status.next();
     }
 }

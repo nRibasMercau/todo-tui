@@ -1,6 +1,6 @@
-use crate::models::todo::{NewTodoItem, Status, TodoItem};
+use crate::models::todo::{NewTodoItem, Status, TodoItem, TodoListItem};
 use chrono::NaiveDate;
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, params};
 
 /// Creates a new todo and returns the generated ID.
 pub fn create_todo(conn: &Connection, todo: &NewTodoItem) -> Result<i64> {
@@ -21,27 +21,22 @@ pub fn create_todo(conn: &Connection, todo: &NewTodoItem) -> Result<i64> {
 }
 
 /// Gets todos.
-pub fn get_todos(conn: &Connection) -> Result<Vec<TodoItem>> {
-    let mut stmt =
-        conn.prepare("SELECT id, todo, info, status, project_id, due_date FROM todos")?;
+pub fn get_todos(conn: &Connection) -> Result<Vec<TodoListItem>> {
+    let mut stmt = conn.prepare(
+        "
+            SELECT t.id, t.todo, t.info, t.status, p.project, t.due_date
+            FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.project_id
+        ",
+    )?;
     let todos = stmt
         .query_map([], |row| {
-            let status_str: String = row.get("status")?;
-            let status = Status::from_str(&status_str).map_err(|err| {
-                rusqlite::Error::FromSqlConversionFailure(
-                    3,
-                    rusqlite::types::Type::Text,
-                    Box::new(std::io::Error::other(err)),
-                )
-            })?;
-            let due_date: Option<NaiveDate> = row.get("due_date")?;
-            Ok(TodoItem {
+            Ok(TodoListItem {
                 id: row.get("id")?,
                 todo: row.get("todo")?,
                 info: row.get("info")?,
-                status,
-                project_id: row.get("project_id")?,
-                due_date,
+                status: row.get("status")?,
+                project: row.get("project")?,
+                due_date: row.get("due_date")?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -50,16 +45,58 @@ pub fn get_todos(conn: &Connection) -> Result<Vec<TodoItem>> {
 }
 
 /// Gets todo by ID.
-pub fn get_todo_by_id(conn: &Connection) -> Result<()> {
-    unimplemented!()
+pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<TodoItem> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT id, todo, info, status, project_id, due_date 
+        FROM todos 
+        WHERE id = ?1",
+    )?;
+
+    Ok(stmt.query_row([todo_id], |row| {
+        Ok(TodoItem {
+            id: row.get(0)?,
+            todo: row.get(1)?,
+            info: row.get(2)?,
+            status: row.get(3)?,
+            project_id: row.get(4)?,
+            due_date: row.get(5)?,
+        })
+    })?)
 }
 
 /// Updates an existing todo.
-pub fn update_todo(conn: &Connection) -> Result<()> {
-    unimplemented!();
+pub fn update_todo(conn: &Connection, todo: TodoItem) -> Result<()> {
+    let mut stmt = conn.prepare(
+        "
+        UPDATE todos
+        SET todo = ?2, info = ?3, status = ?4, project_id = ?5, due_date = ?6
+        WHERE id = ?1
+        ",
+    )?;
+
+    stmt.execute(params![
+        todo.id,
+        todo.todo,
+        todo.info,
+        todo.status,
+        todo.project_id,
+        todo.due_date,
+    ])?;
+
+    Ok(())
 }
 
 /// Deletes a todo by ID.
-pub fn delete_todo(conn: &Connection) -> Result<()> {
-    unimplemented!();
+pub fn delete_todo(conn: &Connection, todo_id: &i64) -> Result<()> {
+    let mut stmt = conn.prepare(
+        "
+        DELETE
+        FROM todos
+        WHERE id = ?1",
+    )?;
+
+    stmt.execute([todo_id])?;
+
+    Ok(())
 }

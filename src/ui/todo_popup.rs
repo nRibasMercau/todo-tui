@@ -164,7 +164,7 @@ impl TodoPopup {
         }
     }
 
-    pub fn from_todo(todo: &TodoItem, index: usize, app: &App) -> Self {
+    pub fn from_todo(todo: &TodoItem, app: &App) -> Self {
         /*
          * TodoItem (borrowed)
          *   │

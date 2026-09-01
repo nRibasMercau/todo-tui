@@ -56,7 +56,7 @@ impl App {
         self.error_message = None;
         if let Some(item) = item {
             let todo_item = &self.todo_list.items[item];
-            self.popup = Some(TodoPopup::from_todo(todo_item, item, &self));
+            self.popup = Some(TodoPopup::from_todo(todo_item, &self));
         } else {
             self.popup = Some(TodoPopup::new());
         }
