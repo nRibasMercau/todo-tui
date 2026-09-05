@@ -1,4 +1,4 @@
-use crate::models::todo::{NewTodoItem, Status, TodoItem, TodoListItem};
+use crate::models::todo::{NewTodoItem, Status, Todo, TodoListItem};
 use chrono::NaiveDate;
 use rusqlite::{Connection, Result, params};
 
@@ -45,7 +45,7 @@ pub fn get_todos(conn: &Connection) -> Result<Vec<TodoListItem>> {
 }
 
 /// Gets todo by ID.
-pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<TodoItem> {
+pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
     let mut stmt = conn.prepare(
         "
         SELECT id, todo, info, status, project_id, due_date 
@@ -54,7 +54,7 @@ pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<TodoItem> {
     )?;
 
     Ok(stmt.query_row([todo_id], |row| {
-        Ok(TodoItem {
+        Ok(Todo {
             id: row.get(0)?,
             todo: row.get(1)?,
             info: row.get(2)?,
@@ -66,7 +66,7 @@ pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<TodoItem> {
 }
 
 /// Updates an existing todo.
-pub fn update_todo(conn: &Connection, todo: TodoItem) -> Result<()> {
+pub fn update_todo(conn: &Connection, todo: Todo) -> Result<()> {
     let mut stmt = conn.prepare(
         "
         UPDATE todos

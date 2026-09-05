@@ -68,7 +68,7 @@ impl ToSql for Status {
 }
 
 #[derive(Debug)]
-pub struct TodoItem {
+pub struct Todo {
     pub id: i64,
     pub todo: String,
     pub info: String,
@@ -77,7 +77,7 @@ pub struct TodoItem {
     pub due_date: Option<NaiveDate>,
 }
 
-impl TodoItem {
+impl Todo {
     pub fn toggle_status(&mut self) {
         self.status = self.status.next();
     }

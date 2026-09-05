@@ -1,7 +1,7 @@
 use super::calendar;
 use crate::app::App;
 use crate::models::todo::Status;
-use crate::models::todo::{NewTodoItem, TodoItem};
+use crate::models::todo::{NewTodoItem, Todo};
 use crate::ui::fields::StringField;
 use chrono::{Local, NaiveDate};
 use ratatui::{
@@ -164,7 +164,7 @@ impl TodoPopup {
         }
     }
 
-    pub fn from_todo(todo: &TodoItem, app: &App) -> Self {
+    pub fn from_todo(todo: &Todo, app: &App) -> Self {
         /*
          * TodoItem (borrowed)
          *   │
@@ -219,11 +219,11 @@ impl TodoPopup {
         }
     }
 
-    pub fn submit_edit(self, app: &App) -> TodoItem {
+    pub fn submit_edit(self, app: &App) -> Todo {
         let project_name = self.project.stringfield_to_string();
         let project_id = app.find_project_id(&project_name);
 
-        TodoItem {
+        Todo {
             id: self.id.unwrap(),
             todo: self.todo.stringfield_to_string(),
             info: self.info.stringfield_to_string(),

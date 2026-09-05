@@ -1,6 +1,6 @@
 use crate::models::{
     project::Project,
-    todo::{NewTodoItem, Status, TodoItem},
+    todo::{NewTodoItem, Status, Todo},
 };
 use crate::ui::todo_popup::TodoPopup;
 use chrono::NaiveDate;
@@ -17,7 +17,7 @@ pub struct App {
 
 #[derive(Debug)]
 pub struct TodoList {
-    pub items: Vec<TodoItem>,
+    pub items: Vec<Todo>,
     pub state: ListState,
 }
 
@@ -40,7 +40,7 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn add_to_do(&mut self, new_item: TodoItem) {
+    pub fn add_to_do(&mut self, new_item: Todo) {
         self.todo_list.items.push(new_item)
     }
 
@@ -116,9 +116,9 @@ impl FromIterator<(i64, String, String, Status, Option<i64>, Option<NaiveDate>)>
     where
         I: IntoIterator<Item = (i64, String, String, Status, Option<i64>, Option<NaiveDate>)>,
     {
-        let items: Vec<TodoItem> = iter
+        let items: Vec<Todo> = iter
             .into_iter()
-            .map(|(id, todo, info, status, project_id, due_date)| TodoItem {
+            .map(|(id, todo, info, status, project_id, due_date)| Todo {
                 id,
                 todo,
                 info,
@@ -140,7 +140,7 @@ impl FromIterator<(i64, String, String, Status, Option<i64>, Option<NaiveDate>)>
 }
 
 impl TodoList {
-    pub fn replace_todo(&mut self, todo_item: TodoItem) -> Result<(), TodoListError> {
+    pub fn replace_todo(&mut self, todo_item: Todo) -> Result<(), TodoListError> {
         match self.items.iter_mut().find(|i| i.id == todo_item.id) {
             Some(item) => {
                 *item = todo_item;
@@ -157,7 +157,7 @@ impl TodoList {
     }
 
     pub fn add_todo(&mut self, todo_item: NewTodoItem) {
-        let new_todo_item = TodoItem {
+        let new_todo_item = Todo {
             id: 50,
             todo: todo_item.todo,
             info: todo_item.info,
