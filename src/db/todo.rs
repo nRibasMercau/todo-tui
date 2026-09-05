@@ -2,7 +2,7 @@ use crate::models::todo::{NewTodoRecord, Todo, TodoRecord};
 use rusqlite::{Connection, Result, params};
 
 /// Creates a new todo and returns the generated ID.
-pub fn create_todo(conn: &Connection, todo: NewTodoRecord) -> Result<i64> {
+pub fn create(conn: &Connection, todo: NewTodoRecord) -> Result<i64> {
     let status = todo.status.as_str();
     conn.execute(
         "
@@ -20,7 +20,7 @@ pub fn create_todo(conn: &Connection, todo: NewTodoRecord) -> Result<i64> {
 }
 
 /// Gets todos.
-pub fn get_todos(conn: &Connection) -> Result<Vec<Todo>> {
+pub fn get_all(conn: &Connection) -> Result<Vec<Todo>> {
     let mut stmt = conn.prepare(
         "
             SELECT t.id, t.todo, t.info, t.status, p.project, t.due_date
@@ -44,7 +44,7 @@ pub fn get_todos(conn: &Connection) -> Result<Vec<Todo>> {
 }
 
 /// Gets todo by ID.
-pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
+pub fn get_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
     let mut stmt = conn.prepare(
         "
         SELECT t.id, t.todo, t.info, t.status, p.name as project, t.due_date
@@ -65,7 +65,7 @@ pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
 }
 
 /// Updates an existing todo.
-pub fn update_todo(conn: &Connection, todo: TodoRecord) -> Result<()> {
+pub fn update(conn: &Connection, todo: TodoRecord) -> Result<()> {
     let mut stmt = conn.prepare(
         "
         UPDATE todos
@@ -87,7 +87,7 @@ pub fn update_todo(conn: &Connection, todo: TodoRecord) -> Result<()> {
 }
 
 /// Deletes a todo by ID.
-pub fn delete_todo(conn: &Connection, todo_id: &i64) -> Result<()> {
+pub fn delete(conn: &Connection, todo_id: i64) -> Result<()> {
     let mut stmt = conn.prepare(
         "
         DELETE

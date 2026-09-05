@@ -1,6 +1,6 @@
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
-    db,
+    db::{project, todo},
     models::{
         project::Project,
         todo::{NewTodoRecord, Status, Todo, TodoRecord},
@@ -66,7 +66,7 @@ impl App {
             projects: vec![Project {
                 id: 1,
                 name: String::from("rust"),
-                archive: false,
+                archived: false,
             }],
             popup: None,
             error_message: None,
@@ -95,7 +95,7 @@ impl App {
         // If the project exists, get the id
         // If the project doesn't exists, ask user
         let project_id = match new_todo.project.as_deref() {
-            Some(project) => db::project::get_by_name(&self.conn, &project)?,
+            Some(project) => project::get_by_name(&self.conn, &project)?,
             None => None,
         };
 
@@ -111,7 +111,7 @@ impl App {
                 project_id,
                 due_date: new_todo.due_date,
             };
-            db::todo::update_todo(&self.conn, todo)?;
+            todo::update(&self.conn, todo)?;
         // If popup.id is None, it's a new todo
         // Insert the new todo
         } else {
@@ -123,7 +123,7 @@ impl App {
                 project_id,
                 due_date: new_todo.due_date,
             };
-            db::todo::create_todo(&self.conn, todo)?;
+            todo::create(&self.conn, todo)?;
         };
 
         Ok(())
