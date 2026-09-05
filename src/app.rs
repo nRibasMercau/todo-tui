@@ -93,7 +93,7 @@ impl App {
 
         // Resolve project name
         // If the project exists, get the id
-        // If the project doesn't exists, ask user
+        // TODO: If the project doesn't exists, ask user
         let project_id = match new_todo.project.as_deref() {
             Some(project) => project::get_by_name(&self.conn, &project)?,
             None => None,
@@ -126,8 +126,38 @@ impl App {
             todo::create(&self.conn, todo)?;
         };
 
+        // Close popup
+        self.popup = None;
         Ok(())
-        //
+    }
+
+    pub fn delete_todo(&mut self) -> rusqlite::Result<()> {
+        if let Some(i) = self.todo_list.state.selected() {
+            let todo_id = self.todo_list.items[i].id;
+
+            // Delete db record
+            todo::delete(&self.conn, todo_id)?;
+
+            // Remove item from the list
+            self.todo_list.items.remove(i);
+
+            // Handle selection status
+            // If there are no todos, select is None
+            if self.todo_list.items.is_empty() {
+                self.todo_list.state.select(None);
+            // If the deleted todo was the last one in the list,
+            // select the new last one
+            } else if i >= self.todo_list.items.len() {
+                self.todo_list
+                    .state
+                    .select(Some(self.todo_list.items.len() - 1));
+            // Otherwise, select the new i
+            } else {
+                self.todo_list.state.select(Some(i));
+            }
+        };
+
+        Ok(())
     }
 
     /// Selects next element in the list
