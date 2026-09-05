@@ -22,16 +22,6 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             None => " ".to_string(),
         };
 
-        // TODO: when db is implemented, this should come directly
-        // from the db
-        let project = match item.project_id {
-            Some(project_id) => match app.projects.iter().find(|p| p.id == project_id) {
-                Some(project) => project.name.as_str(),
-                None => "",
-            },
-            None => "",
-        };
-
         ListItem::new(Line::from(vec![
             Span::raw(format!("{} ", status_icon(item.status))),
             Span::styled(
@@ -39,7 +29,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 status_style(item.status),
             ),
             Span::styled(format!("{}", item.todo), item_style(item.status)),
-            Span::raw(format!(" {} ", project)),
+            Span::raw(format!(" {} ", item.project.as_deref().unwrap_or(""))),
             //TODO: style due_date: if date is overdue, color should be red
             Span::raw(format!("{}", due_date)),
         ]))

@@ -1,9 +1,8 @@
-use crate::models::todo::{NewTodoItem, Status, Todo, TodoListItem};
-use chrono::NaiveDate;
+use crate::models::todo::{NewTodoRecord, Todo, TodoRecord};
 use rusqlite::{Connection, Result, params};
 
 /// Creates a new todo and returns the generated ID.
-pub fn create_todo(conn: &Connection, todo: &NewTodoItem) -> Result<i64> {
+pub fn create_todo(conn: &Connection, todo: NewTodoRecord) -> Result<i64> {
     let status = todo.status.as_str();
     conn.execute(
         "
@@ -21,16 +20,16 @@ pub fn create_todo(conn: &Connection, todo: &NewTodoItem) -> Result<i64> {
 }
 
 /// Gets todos.
-pub fn get_todos(conn: &Connection) -> Result<Vec<TodoListItem>> {
+pub fn get_todos(conn: &Connection) -> Result<Vec<Todo>> {
     let mut stmt = conn.prepare(
         "
             SELECT t.id, t.todo, t.info, t.status, p.project, t.due_date
-            FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.project_id
+            FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
         ",
     )?;
     let todos = stmt
         .query_map([], |row| {
-            Ok(TodoListItem {
+            Ok(Todo {
                 id: row.get("id")?,
                 todo: row.get("todo")?,
                 info: row.get("info")?,
@@ -48,8 +47,8 @@ pub fn get_todos(conn: &Connection) -> Result<Vec<TodoListItem>> {
 pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
     let mut stmt = conn.prepare(
         "
-        SELECT id, todo, info, status, project_id, due_date 
-        FROM todos 
+        SELECT t.id, t.todo, t.info, t.status, p.name as project, t.due_date
+        FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
         WHERE id = ?1",
     )?;
 
@@ -59,14 +58,14 @@ pub fn get_todo_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
             todo: row.get(1)?,
             info: row.get(2)?,
             status: row.get(3)?,
-            project_id: row.get(4)?,
+            project: row.get(4)?,
             due_date: row.get(5)?,
         })
     })?)
 }
 
 /// Updates an existing todo.
-pub fn update_todo(conn: &Connection, todo: Todo) -> Result<()> {
+pub fn update_todo(conn: &Connection, todo: TodoRecord) -> Result<()> {
     let mut stmt = conn.prepare(
         "
         UPDATE todos

@@ -28,10 +28,10 @@ use update::update;
 
 fn main() -> Result<()> {
     // Create database
-    db::connections::create_database()?;
+    let conn = db::connections::create_database()?;
 
     // Create application
-    let mut app = App::new();
+    let mut app = App::new(conn);
 
     // Initialize terminal user interface
     let backend = CrosstermBackend::new(std::io::stderr());

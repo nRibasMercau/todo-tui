@@ -1,7 +1,6 @@
 use super::calendar;
-use crate::app::App;
 use crate::models::todo::Status;
-use crate::models::todo::{NewTodoItem, Todo};
+use crate::models::todo::{NewTodo, Todo};
 use crate::ui::fields::StringField;
 use chrono::{Local, NaiveDate};
 use ratatui::{
@@ -147,6 +146,7 @@ pub struct TodoPopup {
     pub project: StringField,
     pub due_date: Option<NaiveDate>,
     pub focus: Focus,
+    // TODO: calendar_date should be an Option
     pub calendar_date: NaiveDate,
 }
 
@@ -164,7 +164,7 @@ impl TodoPopup {
         }
     }
 
-    pub fn from_todo(todo: &Todo, app: &App) -> Self {
+    pub fn from_todo(todo: &Todo) -> Self {
         /*
          * TodoItem (borrowed)
          *   │
@@ -174,21 +174,12 @@ impl TodoPopup {
          *   ├── Status ───────→ copy ───→ Status
          *   └── NaiveDate ────→ copy ───→ NaiveDate
          */
-        // TODO: move to db query
-        let project_name = if let Some(project_id) = todo.project_id {
-            match app.projects.iter().find(|p| p.id == project_id) {
-                Some(project) => project.name.to_string(),
-                None => "".to_string(),
-            }
-        } else {
-            "".to_string()
-        };
 
         Self {
             id: Some(todo.id),
             todo: StringField::new("To do", todo.todo.clone()),
             info: StringField::new("Description", todo.info.clone()),
-            project: StringField::new("Project", project_name),
+            project: StringField::new("Project", todo.project.clone().unwrap_or_default()),
             status: todo.status,
             due_date: todo.due_date,
             focus: Focus::Todo,
@@ -196,6 +187,16 @@ impl TodoPopup {
                 Some(date) => date,
                 None => Local::now().date_naive(),
             },
+        }
+    }
+
+    pub fn into_new_todo(self) -> NewTodo {
+        NewTodo {
+            todo: self.todo.stringfield_to_string(),
+            info: self.info.stringfield_to_string(),
+            status: self.status,
+            project: (!self.project.value.is_empty()).then(|| self.project.stringfield_to_string()),
+            due_date: self.due_date,
         }
     }
 
@@ -216,33 +217,6 @@ impl TodoPopup {
             Focus::Status => self.focus = Focus::Info,
             Focus::DueDate => self.focus = Focus::Status,
             Focus::Project => self.focus = Focus::DueDate,
-        }
-    }
-
-    pub fn submit_edit(self, app: &App) -> Todo {
-        let project_name = self.project.stringfield_to_string();
-        let project_id = app.find_project_id(&project_name);
-
-        Todo {
-            id: self.id.unwrap(),
-            todo: self.todo.stringfield_to_string(),
-            info: self.info.stringfield_to_string(),
-            status: self.status,
-            project_id: project_id,
-            due_date: self.due_date,
-        }
-    }
-
-    pub fn submit_new(self, app: &App) -> NewTodoItem {
-        let project_name = self.project.stringfield_to_string();
-        let project_id = app.find_project_id(&project_name);
-
-        NewTodoItem {
-            todo: self.todo.stringfield_to_string(),
-            info: self.info.stringfield_to_string(),
-            status: self.status,
-            project_id,
-            due_date: self.due_date,
         }
     }
 

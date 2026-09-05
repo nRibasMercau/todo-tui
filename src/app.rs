@@ -1,13 +1,18 @@
-use crate::models::{
-    project::Project,
-    todo::{NewTodoItem, Status, Todo},
-};
 use crate::ui::todo_popup::TodoPopup;
+use crate::{
+    db,
+    models::{
+        project::Project,
+        todo::{NewTodoRecord, Status, Todo, TodoRecord},
+    },
+};
 use chrono::NaiveDate;
 use ratatui::widgets::ListState;
+use rusqlite::Connection;
 
 #[derive(Debug)]
 pub struct App {
+    conn: Connection,
     pub should_quit: bool,
     pub todo_list: TodoList,
     pub projects: Vec<Project>,
@@ -28,8 +33,44 @@ pub enum TodoListError {
 
 impl App {
     /// Constructs a new instance of [`App`].
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(conn: Connection) -> Self {
+        Self {
+            conn,
+            should_quit: false,
+            todo_list: TodoList::from_iter([
+                (
+                    1,
+                    String::from("Learn Rust"),
+                    String::from("Finish learning Rust"),
+                    Status::Done,
+                    Some(String::from("rust")),
+                    Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
+                ),
+                (
+                    2,
+                    String::from("Finish this app"),
+                    String::from("Finish this tui list app"),
+                    Status::InProgress,
+                    Some(String::from("rust")),
+                    None,
+                ),
+                (
+                    3,
+                    String::from("Create and push repository"),
+                    String::from("Create new git repository and upload the app"),
+                    Status::ToDo,
+                    Some(String::from("rust")),
+                    None,
+                ),
+            ]),
+            projects: vec![Project {
+                id: 1,
+                name: String::from("rust"),
+                archive: false,
+            }],
+            popup: None,
+            error_message: None,
+        }
     }
 
     /// Handles the tick event of the terminal.
@@ -40,14 +81,61 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn add_to_do(&mut self, new_item: Todo) {
-        self.todo_list.items.push(new_item)
+    pub fn submit_todo(&mut self) -> rusqlite::Result<()> {
+        let Some(popup) = self.popup.take() else {
+            return Ok(());
+        };
+
+        // Get the id of the todo from the popup
+        let todo_id = popup.id;
+        // Get NewTodo from the popup
+        let new_todo = popup.into_new_todo();
+
+        // Resolve project name
+        // If the project exists, get the id
+        // If the project doesn't exists, ask user
+        let project_id = match new_todo.project.as_deref() {
+            Some(project) => db::project::get_by_name(&self.conn, &project)?,
+            None => None,
+        };
+
+        // INSERT - UPDATE
+        // If popup.id is Some, it's an edit of an existing todo
+        // Update the existing todo
+        if let Some(todo_id) = todo_id {
+            let todo = TodoRecord {
+                id: todo_id,
+                todo: new_todo.todo,
+                info: new_todo.info,
+                status: new_todo.status,
+                project_id,
+                due_date: new_todo.due_date,
+            };
+            db::todo::update_todo(&self.conn, todo)?;
+        // If popup.id is None, it's a new todo
+        // Insert the new todo
+        } else {
+            // Build TodoRecord
+            let todo = NewTodoRecord {
+                todo: new_todo.todo,
+                info: new_todo.info,
+                status: new_todo.status,
+                project_id,
+                due_date: new_todo.due_date,
+            };
+            db::todo::create_todo(&self.conn, todo)?;
+        };
+
+        Ok(())
+        //
     }
 
+    /// Selects next element in the list
     pub fn select_next(&mut self) {
         self.todo_list.state.select_next();
     }
 
+    /// Selects previous element in the list
     pub fn select_previous(&mut self) {
         self.todo_list.state.select_previous();
     }
@@ -56,7 +144,7 @@ impl App {
         self.error_message = None;
         if let Some(item) = item {
             let todo_item = &self.todo_list.items[item];
-            self.popup = Some(TodoPopup::from_todo(todo_item, &self));
+            self.popup = Some(TodoPopup::from_todo(todo_item));
         } else {
             self.popup = Some(TodoPopup::new());
         }
@@ -70,60 +158,37 @@ impl App {
     }
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            should_quit: false,
-            todo_list: TodoList::from_iter([
-                (
-                    1,
-                    String::from("Learn Rust"),
-                    String::from("Finish learning Rust"),
-                    Status::Done,
-                    Some(1),
-                    Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
-                ),
-                (
-                    2,
-                    String::from("Finish this app"),
-                    String::from("Finish this tui list app"),
-                    Status::InProgress,
-                    Some(1),
-                    None,
-                ),
-                (
-                    3,
-                    String::from("Create and push repository"),
-                    String::from("Create new git repository and upload the app"),
-                    Status::ToDo,
-                    Some(1),
-                    None,
-                ),
-            ]),
-            projects: vec![Project {
-                id: 1,
-                name: String::from("rust"),
-                archive: false,
-            }],
-            popup: None,
-            error_message: None,
-        }
-    }
-}
-
-impl FromIterator<(i64, String, String, Status, Option<i64>, Option<NaiveDate>)> for TodoList {
+impl
+    FromIterator<(
+        i64,
+        String,
+        String,
+        Status,
+        Option<String>,
+        Option<NaiveDate>,
+    )> for TodoList
+{
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = (i64, String, String, Status, Option<i64>, Option<NaiveDate>)>,
+        I: IntoIterator<
+            Item = (
+                i64,
+                String,
+                String,
+                Status,
+                Option<String>,
+                Option<NaiveDate>,
+            ),
+        >,
     {
         let items: Vec<Todo> = iter
             .into_iter()
-            .map(|(id, todo, info, status, project_id, due_date)| Todo {
+            .map(|(id, todo, info, status, project, due_date)| Todo {
                 id,
                 todo,
                 info,
                 status,
-                project_id,
+                project,
                 due_date,
             })
             .collect();
@@ -154,17 +219,5 @@ impl TodoList {
         if let Some(i) = self.state.selected() {
             self.items[i].status = self.items[i].status.next()
         }
-    }
-
-    pub fn add_todo(&mut self, todo_item: NewTodoItem) {
-        let new_todo_item = Todo {
-            id: 50,
-            todo: todo_item.todo,
-            info: todo_item.info,
-            status: todo_item.status,
-            project_id: todo_item.project_id,
-            due_date: todo_item.due_date,
-        };
-        self.items.push(new_todo_item);
     }
 }

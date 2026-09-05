@@ -41,6 +41,9 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 popup.due_date = Some(popup.calendar_date);
                 popup.focus_next();
             } else {
+                // TODO: submit todo
+                //app.submit_todo();
+                /*
                 let popup = app.popup.take().unwrap();
                 if popup.id.is_some() {
                     let todo_item = popup.submit_edit(app);
@@ -56,6 +59,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                     app.todo_list.add_todo(new_todo_item);
                     app.popup = None
                 }
+                */
             }
         }
         _ => {}

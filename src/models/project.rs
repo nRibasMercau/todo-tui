@@ -1,3 +1,5 @@
+// Db record
+// and UI representation
 #[derive(Debug)]
 pub struct Project {
     pub id: i64,
@@ -5,10 +7,11 @@ pub struct Project {
     pub archive: bool,
 }
 
+// Info for creating a new project
 #[derive(Debug)]
 pub struct NewProject {
-    name: String,
-    archive: bool,
+    pub name: String,
+    pub archive: bool,
 }
 
 impl NewProject {

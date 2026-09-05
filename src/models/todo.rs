@@ -67,13 +67,29 @@ impl ToSql for Status {
     }
 }
 
+/*
+ * Represents the db record
+ */
+#[derive(Debug)]
+pub struct TodoRecord {
+    pub id: i64,
+    pub todo: String,
+    pub info: String,
+    pub status: Status,
+    pub project_id: Option<i64>,
+    pub due_date: Option<NaiveDate>,
+}
+
+/*
+ * Represents the todo as shown in the list
+ */
 #[derive(Debug)]
 pub struct Todo {
     pub id: i64,
     pub todo: String,
     pub info: String,
     pub status: Status,
-    pub project_id: Option<i64>,
+    pub project: Option<String>,
     pub due_date: Option<NaiveDate>,
 }
 
@@ -83,36 +99,11 @@ impl Todo {
     }
 }
 
+/*
+ * Information to create a new todo
+ */
 #[derive(Debug)]
-pub struct NewTodoItem {
-    pub todo: String,
-    pub info: String,
-    pub status: Status,
-    pub project_id: Option<i64>,
-    pub due_date: Option<NaiveDate>,
-}
-
-impl NewTodoItem {
-    pub fn new(
-        status: Status,
-        todo: String,
-        info: String,
-        project_id: Option<i64>,
-        due_date: Option<NaiveDate>,
-    ) -> Self {
-        Self {
-            status,
-            todo,
-            info,
-            project_id,
-            due_date,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct TodoListItem {
-    pub id: i64,
+pub struct NewTodo {
     pub todo: String,
     pub info: String,
     pub status: Status,
@@ -120,8 +111,32 @@ pub struct TodoListItem {
     pub due_date: Option<NaiveDate>,
 }
 
-impl TodoListItem {
-    pub fn toggle_status(&mut self) {
-        self.status = self.status.next();
+impl NewTodo {
+    pub fn new(
+        status: Status,
+        todo: String,
+        info: String,
+        project: Option<String>,
+        due_date: Option<NaiveDate>,
+    ) -> Self {
+        Self {
+            status,
+            todo,
+            info,
+            project,
+            due_date,
+        }
     }
+}
+
+/*
+ * Information to create a new todo in db
+ */
+#[derive(Debug)]
+pub struct NewTodoRecord {
+    pub todo: String,
+    pub info: String,
+    pub status: Status,
+    pub project_id: Option<i64>,
+    pub due_date: Option<NaiveDate>,
 }
