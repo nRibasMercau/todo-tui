@@ -5,6 +5,7 @@ use rusqlite::{Connection, Result, params};
 pub fn create(conn: &mut Connection, todo: NewTodoRecord) -> Result<Todo> {
     let status = todo.status.as_str();
 
+    tracing::debug!("inserting todo");
     let tx = conn.transaction()?;
     tx.execute(
         "
@@ -29,10 +30,10 @@ pub fn create(conn: &mut Connection, todo: NewTodoRecord) -> Result<Todo> {
 }
 
 /// Gets todos.
-pub fn get_all(conn: &Connection) -> Result<Vec<Todo>> {
+pub fn get(conn: &Connection) -> Result<Vec<Todo>> {
     let mut stmt = conn.prepare(
         "
-            SELECT t.id, t.todo, t.info, t.status, p.project, t.due_date
+            SELECT t.id, t.todo, t.info, t.status, p.name as project, t.due_date
             FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
         ",
     )?;
@@ -56,9 +57,9 @@ pub fn get_all(conn: &Connection) -> Result<Vec<Todo>> {
 pub fn get_by_id(conn: &Connection, todo_id: i64) -> Result<Todo> {
     let mut stmt = conn.prepare(
         "
-        SELECT t.id, t.todo, t.info, t.status, p.name as project, t.due_date
+        SELECT t.id, t.todo, t.info, t.status, p.name AS project, t.due_date
         FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
-        WHERE id = ?1",
+        WHERE t.id = ?1",
     )?;
 
     Ok(stmt.query_row([todo_id], |row| {
@@ -75,6 +76,7 @@ pub fn get_by_id(conn: &Connection, todo_id: i64) -> Result<Todo> {
 
 /// Updates an existing todo.
 pub fn update(conn: &mut Connection, todo: TodoRecord) -> Result<Todo> {
+    tracing::debug!("updating todo");
     let tx = conn.transaction()?;
 
     tx.execute(

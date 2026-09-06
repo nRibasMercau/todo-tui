@@ -13,6 +13,7 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
         KeyCode::Esc | KeyCode::Char('q') => app.quit(),
         KeyCode::Char('j') => app.select_next(),
         KeyCode::Char('k') => app.select_previous(),
+        // TODO: this should update the todo
         KeyCode::Char(' ') => app.todo_list.toggle_status(),
         KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
         KeyCode::Char('a') => app.open_todo_popup(None),
@@ -41,7 +42,16 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                 popup.due_date = Some(popup.calendar_date);
                 popup.focus_next();
             } else {
-                // TODO: submit todo
+                match app.submit_todo() {
+                    Ok(()) => {
+                        app.popup = None;
+                        app.error_message = None;
+                    }
+                    Err(err) => {
+                        app.error_message = Some(err.to_string());
+                    }
+                }
+
                 //app.submit_todo();
                 /*
                 let popup = app.popup.take().unwrap();

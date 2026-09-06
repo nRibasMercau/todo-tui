@@ -33,10 +33,15 @@ pub enum TodoListError {
 
 impl App {
     /// Constructs a new instance of [`App`].
-    pub fn new(conn: Connection) -> Self {
-        Self {
+    pub fn new(conn: Connection) -> rusqlite::Result<Self> {
+        let items = todo::get(&conn)?;
+        let projects = project::get(&conn)?;
+        tracing::info!(count = items.len(), "fetched todos");
+        Ok(Self {
             conn,
             should_quit: false,
+            todo_list: TodoList::new(items),
+            /*
             todo_list: TodoList::from_iter([
                 (
                     1,
@@ -63,14 +68,11 @@ impl App {
                     None,
                 ),
             ]),
-            projects: vec![Project {
-                id: 1,
-                name: String::from("rust"),
-                archived: false,
-            }],
+            */
+            projects: projects,
             popup: None,
             error_message: None,
-        }
+        })
     }
 
     /// Handles the tick event of the terminal.
@@ -88,6 +90,7 @@ impl App {
 
         // Get the id of the todo from the popup
         let todo_id = popup.id;
+
         // Get NewTodo from the popup
         let new_todo = popup.into_new_todo();
 
@@ -145,8 +148,6 @@ impl App {
             self.todo_list.add_todo(todo);
         };
 
-        // Close popup
-        self.popup = None;
         Ok(())
     }
 
@@ -254,6 +255,16 @@ impl
 }
 
 impl TodoList {
+    pub fn new(items: Vec<Todo>) -> Self {
+        let mut state = ListState::default();
+
+        if !items.is_empty() {
+            state.select(Some(0));
+        }
+
+        Self { items, state }
+    }
+
     pub fn add_todo(&mut self, todo: Todo) {
         self.items.push(todo);
     }

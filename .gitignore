@@ -1,3 +1,4 @@
 /target
 todo.db
 todo.db-*
+*.log

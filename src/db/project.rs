@@ -3,6 +3,7 @@ use rusqlite::{Connection, Result, params};
 
 /// Creates a new project and returns the generated project.
 pub fn create(conn: &mut Connection, project: NewProject) -> Result<Project> {
+    tracing::debug!("creating project");
     let tx = conn.transaction()?;
     tx.execute(
         "
@@ -21,11 +22,15 @@ pub fn create(conn: &mut Connection, project: NewProject) -> Result<Project> {
 
 /// Gets project ID by name
 pub fn get_by_name(conn: &Connection, project_name: &str) -> Result<Option<i64>> {
-    conn.query_row(
+    match conn.query_row(
         "SELECT id FROM projects WHERE name = ?1",
         [project_name],
         |row| row.get("id"),
-    )
+    ) {
+        Ok(id) => Ok(Some(id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(err),
+    }
 }
 
 /// Gets project by iD
@@ -47,7 +52,7 @@ pub fn get_by_id(conn: &Connection, project_id: i64) -> Result<Project> {
 }
 
 /// Gets projects.
-pub fn get_all(conn: &Connection) -> Result<Vec<Project>> {
+pub fn get(conn: &Connection) -> Result<Vec<Project>> {
     let mut stmt = conn.prepare(
         "
         SELECT id, name, archived

@@ -23,15 +23,36 @@ use app::App;
 use color_eyre::Result;
 use event::{Event, EventHandler};
 use ratatui::{Terminal, backend::CrosstermBackend};
+use std::fs::OpenOptions;
+use tracing_subscriber::EnvFilter;
 use tui::Tui;
 use update::update;
 
+fn init_logging() -> std::io::Result<()> {
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("todo-tui.log")?;
+
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .with_writer(file)
+        .init();
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
+    init_logging()?;
+
     // Create database
     let conn = db::connections::create_database()?;
 
     // Create application
-    let mut app = App::new(conn);
+    tracing::info!("creating app");
+    let mut app = App::new(conn)?;
 
     // Initialize terminal user interface
     let backend = CrosstermBackend::new(std::io::stderr());
