@@ -2,7 +2,7 @@ use crate::models::project::{NewProject, Project};
 use rusqlite::{Connection, Result, params};
 
 /// Creates a new project and returns the generated project.
-pub fn create(conn: &mut Connection, project: &NewProject) -> Result<Project> {
+pub fn create(conn: &mut Connection, project: NewProject) -> Result<Project> {
     let tx = conn.transaction()?;
     tx.execute(
         "

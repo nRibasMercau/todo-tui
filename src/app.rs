@@ -2,7 +2,7 @@ use crate::ui::todo_popup::TodoPopup;
 use crate::{
     db::{project, todo},
     models::{
-        project::Project,
+        project::{NewProject, Project},
         todo::{NewTodoRecord, Status, Todo, TodoRecord},
     },
 };
@@ -94,8 +94,22 @@ impl App {
         // Resolve project name
         // If the project exists, get the id
         // TODO: If the project doesn't exists, ask user
+        // For the moment, it's creating the new project by default
         let project_id = match new_todo.project.as_deref() {
-            Some(project) => project::get_by_name(&self.conn, &project)?,
+            Some(project) => match project::get_by_name(&self.conn, &project)? {
+                Some(project_id) => Some(project_id),
+                None => {
+                    let new_project = project::create(
+                        &mut self.conn,
+                        NewProject {
+                            name: project.to_string(),
+                            archived: false,
+                        },
+                    )?;
+
+                    Some(new_project.id)
+                }
+            },
             None => None,
         };
 
