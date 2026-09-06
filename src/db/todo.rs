@@ -1,10 +1,12 @@
 use crate::models::todo::{NewTodoRecord, Todo, TodoRecord};
 use rusqlite::{Connection, Result, params};
 
-/// Creates a new todo and returns the generated ID.
-pub fn create(conn: &Connection, todo: NewTodoRecord) -> Result<i64> {
+/// Creates a new todo and returns the new todo.
+pub fn create(conn: &mut Connection, todo: NewTodoRecord) -> Result<Todo> {
     let status = todo.status.as_str();
-    conn.execute(
+
+    let tx = conn.transaction()?;
+    tx.execute(
         "
         INSERT INTO todos (todo, info, status, project_id, due_date) 
         VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -16,7 +18,14 @@ pub fn create(conn: &Connection, todo: NewTodoRecord) -> Result<i64> {
             &todo.due_date,
         ),
     )?;
-    Ok(conn.last_insert_rowid())
+
+    let id = tx.last_insert_rowid();
+
+    let todo = get_by_id(&tx, id)?;
+
+    tx.commit()?;
+
+    Ok(todo)
 }
 
 /// Gets todos.
@@ -44,7 +53,7 @@ pub fn get_all(conn: &Connection) -> Result<Vec<Todo>> {
 }
 
 /// Gets todo by ID.
-pub fn get_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
+pub fn get_by_id(conn: &Connection, todo_id: i64) -> Result<Todo> {
     let mut stmt = conn.prepare(
         "
         SELECT t.id, t.todo, t.info, t.status, p.name as project, t.due_date
@@ -65,25 +74,30 @@ pub fn get_by_id(conn: &Connection, todo_id: &i64) -> Result<Todo> {
 }
 
 /// Updates an existing todo.
-pub fn update(conn: &Connection, todo: TodoRecord) -> Result<()> {
-    let mut stmt = conn.prepare(
+pub fn update(conn: &mut Connection, todo: TodoRecord) -> Result<Todo> {
+    let tx = conn.transaction()?;
+
+    tx.execute(
         "
         UPDATE todos
         SET todo = ?2, info = ?3, status = ?4, project_id = ?5, due_date = ?6
         WHERE id = ?1
         ",
+        params![
+            todo.id,
+            todo.todo,
+            todo.info,
+            todo.status,
+            todo.project_id,
+            todo.due_date,
+        ],
     )?;
 
-    stmt.execute(params![
-        todo.id,
-        todo.todo,
-        todo.info,
-        todo.status,
-        todo.project_id,
-        todo.due_date,
-    ])?;
+    let updated_todo = get_by_id(&tx, todo.id)?;
 
-    Ok(())
+    tx.commit()?;
+
+    Ok(updated_todo)
 }
 
 /// Deletes a todo by ID.

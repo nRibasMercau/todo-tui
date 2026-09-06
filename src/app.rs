@@ -28,7 +28,7 @@ pub struct TodoList {
 
 #[derive(Debug)]
 pub enum TodoListError {
-    InvalidIndex,
+    TodoNotFound,
 }
 
 impl App {
@@ -111,7 +111,11 @@ impl App {
                 project_id,
                 due_date: new_todo.due_date,
             };
-            todo::update(&self.conn, todo)?;
+            let todo = todo::update(&mut self.conn, todo)?;
+            self.todo_list
+                .replace_todo(todo)
+                .expect("Internal error: updated must exist in TodoList");
+
         // If popup.id is None, it's a new todo
         // Insert the new todo
         } else {
@@ -123,7 +127,8 @@ impl App {
                 project_id,
                 due_date: new_todo.due_date,
             };
-            todo::create(&self.conn, todo)?;
+            let todo = todo::create(&mut self.conn, todo)?;
+            self.todo_list.add_todo(todo);
         };
 
         // Close popup
@@ -139,7 +144,7 @@ impl App {
             todo::delete(&self.conn, todo_id)?;
 
             // Remove item from the list
-            self.todo_list.items.remove(i);
+            self.todo_list.items.retain(|todo| todo.id != todo_id);
 
             // Handle selection status
             // If there are no todos, select is None
@@ -235,13 +240,17 @@ impl
 }
 
 impl TodoList {
+    pub fn add_todo(&mut self, todo: Todo) {
+        self.items.push(todo);
+    }
+
     pub fn replace_todo(&mut self, todo_item: Todo) -> Result<(), TodoListError> {
         match self.items.iter_mut().find(|i| i.id == todo_item.id) {
             Some(item) => {
                 *item = todo_item;
                 Ok(())
             }
-            None => Err(TodoListError::InvalidIndex),
+            None => Err(TodoListError::TodoNotFound),
         }
     }
 
