@@ -14,7 +14,7 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
         KeyCode::Char('j') => app.select_next(),
         KeyCode::Char('k') => app.select_previous(),
         // TODO: this should update the todo
-        KeyCode::Char(' ') => app.todo_list.toggle_status(),
+        KeyCode::Char(' ') => app.toggle_status_todo().unwrap(),
         KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
         KeyCode::Char('a') => app.open_todo_popup(None),
         _ => {}

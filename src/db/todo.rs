@@ -1,4 +1,4 @@
-use crate::models::todo::{NewTodoRecord, Todo, TodoRecord};
+use crate::models::todo::{NewTodoRecord, Status, Todo, TodoRecord};
 use rusqlite::{Connection, Result, params};
 
 /// Creates a new todo and returns the new todo.
@@ -100,6 +100,15 @@ pub fn update(conn: &mut Connection, todo: TodoRecord) -> Result<Todo> {
     tx.commit()?;
 
     Ok(updated_todo)
+}
+
+pub fn update_status(conn: &Connection, todo_id: i64, status: Status) -> Result<()> {
+    tracing::debug!("updating todo status");
+    conn.execute(
+        "UPDATE todos SET status = ?2 WHERE id = ?1",
+        params![todo_id, status],
+    )?;
+    Ok(())
 }
 
 /// Deletes a todo by ID.

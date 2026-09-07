@@ -151,6 +151,18 @@ impl App {
         Ok(())
     }
 
+    pub fn toggle_status_todo(&mut self) -> rusqlite::Result<()> {
+        if let Some(i) = self.todo_list.state.selected() {
+            let id = self.todo_list.items[i].id;
+            let new_status = self.todo_list.items[i].status.next();
+
+            todo::update_status(&mut self.conn, id, new_status)?;
+        }
+
+        self.todo_list.toggle_status();
+        Ok(())
+    }
+
     pub fn delete_todo(&mut self) -> rusqlite::Result<()> {
         if let Some(i) = self.todo_list.state.selected() {
             let todo_id = self.todo_list.items[i].id;
