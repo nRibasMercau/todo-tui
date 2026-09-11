@@ -1,3 +1,4 @@
+use crate::app::ActivePanel;
 use crate::app::App;
 use crate::ui::calendar;
 use crate::ui::todo_popup::Focus;
@@ -10,15 +11,26 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
  */
 fn update_normal(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
+        KeyCode::Char('h') => app.active_panel = ActivePanel::Projects,
+        KeyCode::Char('l') => app.active_panel = ActivePanel::Todos,
         KeyCode::Esc | KeyCode::Char('q') => app.quit(),
-        KeyCode::Char('j') => app.select_next(),
-        KeyCode::Char('k') => app.select_previous(),
-        // TODO: this should update the todo
-        KeyCode::Char(' ') => app.toggle_status_todo().unwrap(),
-        KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
-        KeyCode::Char('a') => app.open_todo_popup(None),
-        _ => {}
-    };
+
+        code => match app.active_panel {
+            ActivePanel::Todos => match code {
+                KeyCode::Char('j') => app.todo_list.select_next(),
+                KeyCode::Char('k') => app.todo_list.select_previous(),
+                KeyCode::Char(' ') => app.toggle_status_todo().unwrap(),
+                KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
+                KeyCode::Char('a') => app.open_todo_popup(None),
+                _ => {}
+            },
+            ActivePanel::Projects => match code {
+                KeyCode::Char('j') => app.projects.select_next(),
+                KeyCode::Char('k') => app.projects.select_previous(),
+                _ => {}
+            },
+        },
+    }
 }
 
 /*
@@ -51,25 +63,6 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
                         app.error_message = Some(err.to_string());
                     }
                 }
-
-                //app.submit_todo();
-                /*
-                let popup = app.popup.take().unwrap();
-                if popup.id.is_some() {
-                    let todo_item = popup.submit_edit(app);
-                    match app.todo_list.replace_todo(todo_item) {
-                        Ok(()) => app.popup = None,
-                        Err(error) => {
-                            // Save failed
-                            app.error_message = Some(format!("Error saving todo: {error:?}"))
-                        }
-                    }
-                } else {
-                    let new_todo_item = popup.submit_new(app);
-                    app.todo_list.add_todo(new_todo_item);
-                    app.popup = None
-                }
-                */
             }
         }
         _ => {}

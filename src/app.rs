@@ -14,8 +14,9 @@ use rusqlite::Connection;
 pub struct App {
     conn: Connection,
     pub should_quit: bool,
+    pub active_panel: ActivePanel,
     pub todo_list: TodoList,
-    pub projects: Vec<Project>,
+    pub projects: ProjectList,
     pub popup: Option<TodoPopup>,
     pub error_message: Option<String>,
 }
@@ -27,49 +28,35 @@ pub struct TodoList {
 }
 
 #[derive(Debug)]
+pub struct ProjectList {
+    pub items: Vec<Project>,
+    pub state: ListState,
+}
+
+#[derive(Debug)]
 pub enum TodoListError {
     TodoNotFound,
+}
+
+#[derive(Debug)]
+pub enum ActivePanel {
+    Todos,
+    Projects,
 }
 
 impl App {
     /// Constructs a new instance of [`App`].
     pub fn new(conn: Connection) -> rusqlite::Result<Self> {
-        let items = todo::get(&conn)?;
+        let todos = todo::get(&conn)?;
         let projects = project::get(&conn)?;
-        tracing::info!(count = items.len(), "fetched todos");
+        tracing::info!(count = todos.len(), "fetched todos");
+        tracing::info!(count = projects.len(), "fetched projects");
         Ok(Self {
             conn,
             should_quit: false,
-            todo_list: TodoList::new(items),
-            /*
-            todo_list: TodoList::from_iter([
-                (
-                    1,
-                    String::from("Learn Rust"),
-                    String::from("Finish learning Rust"),
-                    Status::Done,
-                    Some(String::from("rust")),
-                    Some(NaiveDate::from_ymd_opt(2026, 9, 1).unwrap()),
-                ),
-                (
-                    2,
-                    String::from("Finish this app"),
-                    String::from("Finish this tui list app"),
-                    Status::InProgress,
-                    Some(String::from("rust")),
-                    None,
-                ),
-                (
-                    3,
-                    String::from("Create and push repository"),
-                    String::from("Create new git repository and upload the app"),
-                    Status::ToDo,
-                    Some(String::from("rust")),
-                    None,
-                ),
-            ]),
-            */
-            projects: projects,
+            active_panel: ActivePanel::Todos,
+            todo_list: TodoList::new(todos),
+            projects: ProjectList::new(projects),
             popup: None,
             error_message: None,
         })
@@ -158,7 +145,6 @@ impl App {
 
             todo::update_status(&mut self.conn, id, new_status)?;
         }
-
         self.todo_list.toggle_status();
         Ok(())
     }
@@ -192,16 +178,6 @@ impl App {
         Ok(())
     }
 
-    /// Selects next element in the list
-    pub fn select_next(&mut self) {
-        self.todo_list.state.select_next();
-    }
-
-    /// Selects previous element in the list
-    pub fn select_previous(&mut self) {
-        self.todo_list.state.select_previous();
-    }
-
     pub fn open_todo_popup(&mut self, item: Option<usize>) {
         self.error_message = None;
         if let Some(item) = item {
@@ -214,6 +190,7 @@ impl App {
 
     pub fn find_project_id(&self, project_name: &str) -> Option<i64> {
         self.projects
+            .items
             .iter()
             .find(|p| p.name == project_name)
             .map(|p| p.id)
@@ -266,6 +243,28 @@ impl
     }
 }
 
+impl ProjectList {
+    pub fn new(items: Vec<Project>) -> Self {
+        let mut state = ListState::default();
+
+        if !items.is_empty() {
+            state.select(Some(0));
+        }
+
+        Self { items, state }
+    }
+
+    /// Selects next element in the list
+    pub fn select_next(&mut self) {
+        self.state.select_next();
+    }
+
+    /// Selects previous element in the list
+    pub fn select_previous(&mut self) {
+        self.state.select_previous();
+    }
+}
+
 impl TodoList {
     pub fn new(items: Vec<Todo>) -> Self {
         let mut state = ListState::default();
@@ -275,6 +274,16 @@ impl TodoList {
         }
 
         Self { items, state }
+    }
+
+    /// Selects next element in the list
+    pub fn select_next(&mut self) {
+        self.state.select_next();
+    }
+
+    /// Selects previous element in the list
+    pub fn select_previous(&mut self) {
+        self.state.select_previous();
     }
 
     pub fn add_todo(&mut self, todo: Todo) {

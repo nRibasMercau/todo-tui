@@ -3,12 +3,14 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem},
+    widgets::{Block, BorderType, Borders, List, ListItem, Padding},
 };
 
+use crate::app::ActivePanel;
 use crate::app::App;
 use crate::models::todo::Status;
 
+const LIST_HIGHLIGHT_STYLE: Style = Style::new().fg(Color::Yellow);
 const HIGHLIGHT_STYLE: Style = Style::new().add_modifier(Modifier::BOLD);
 const TODO_STYLE: Style = Style::new();
 const INPROGRESS_STYLE: Style = Style::new().fg(Color::Yellow);
@@ -38,7 +40,8 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     let list = List::new(items)
         .block(
             Block::default()
-                .title("Todo list")
+                .padding(Padding::vertical(1))
+                .title(Span::styled("TODO", title_style(&app.active_panel)))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
@@ -67,5 +70,12 @@ fn item_style(status: Status) -> Style {
     match status {
         Status::Done => DONE_ITEM_STYLE,
         _ => Style::default(),
+    }
+}
+
+fn title_style(active_panel: &ActivePanel) -> Style {
+    match active_panel {
+        ActivePanel::Todos => LIST_HIGHLIGHT_STYLE,
+        ActivePanel::Projects => Style::new(),
     }
 }
