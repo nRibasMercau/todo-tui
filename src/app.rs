@@ -205,6 +205,8 @@ impl
         Status,
         Option<String>,
         Option<NaiveDate>,
+        NaiveDate,
+        Option<NaiveDate>,
     )> for TodoList
 {
     fn from_iter<I>(iter: I) -> Self
@@ -217,19 +219,25 @@ impl
                 Status,
                 Option<String>,
                 Option<NaiveDate>,
+                NaiveDate,
+                Option<NaiveDate>,
             ),
         >,
     {
         let items: Vec<Todo> = iter
             .into_iter()
-            .map(|(id, todo, info, status, project, due_date)| Todo {
-                id,
-                todo,
-                info,
-                status,
-                project,
-                due_date,
-            })
+            .map(
+                |(id, todo, info, status, project, due_date, created_at, completed_at)| Todo {
+                    id,
+                    todo,
+                    info,
+                    status,
+                    project,
+                    due_date,
+                    created_at,
+                    completed_at,
+                },
+            )
             .collect();
 
         // State

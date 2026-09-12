@@ -13,6 +13,10 @@ pub fn migrate(conn: &mut Connection) -> Result<()> {
         migration_2(&tx)?;
     }
 
+    if version < 3 {
+        migration_3(&tx)?;
+    }
+
     tx.commit()?;
 
     Ok(())
@@ -27,5 +31,11 @@ fn migration_1(tx: &rusqlite::Transaction<'_>) -> Result<()> {
 fn migration_2(tx: &rusqlite::Transaction<'_>) -> Result<()> {
     tx.execute_batch(include_str!("./002_add_project_archived.sql"))?;
     tx.execute_batch("PRAGMA user_version = 2")?;
+    Ok(())
+}
+
+fn migration_3(tx: &rusqlite::Transaction<'_>) -> Result<()> {
+    tx.execute_batch(include_str!("./003_add_todo_created_completed.sql"))?;
+    tx.execute_batch("PRAGMA user_version = 3")?;
     Ok(())
 }

@@ -91,6 +91,8 @@ pub struct Todo {
     pub status: Status,
     pub project: Option<String>,
     pub due_date: Option<NaiveDate>,
+    pub created_at: NaiveDate,
+    pub completed_at: Option<NaiveDate>,
 }
 
 impl Todo {
