@@ -6,7 +6,7 @@ use crate::{
         todo::{NewTodoRecord, Status, Todo, TodoRecord},
     },
 };
-use chrono::NaiveDate;
+use chrono::{Local, NaiveDate};
 use ratatui::widgets::ListState;
 use rusqlite::Connection;
 
@@ -107,6 +107,15 @@ impl App {
         // If popup.id is Some, it's an edit of an existing todo
         // Update the existing todo
         if let Some(todo_id) = todo_id {
+            let current_todo = todo::get_by_id(&mut self.conn, todo_id)?;
+            let completed_at = match (current_todo.status, new_todo.status) {
+                (Status::ToDo, Status::Done) => Some(Local::now().date_naive()),
+                (Status::InProgress, Status::Done) => Some(Local::now().date_naive()),
+                (Status::Done, Status::InProgress) => None,
+                (Status::Done, Status::ToDo) => None,
+                _ => current_todo.completed_at,
+            };
+
             let todo = TodoRecord {
                 id: todo_id,
                 todo: new_todo.todo,
@@ -114,6 +123,8 @@ impl App {
                 status: new_todo.status,
                 project_id,
                 due_date: new_todo.due_date,
+                created_at: current_todo.created_at,
+                completed_at,
             };
             let todo = todo::update(&mut self.conn, todo)?;
             self.todo_list
@@ -130,6 +141,8 @@ impl App {
                 status: new_todo.status,
                 project_id,
                 due_date: new_todo.due_date,
+                created_at: Local::now().date_naive(),
+                completed_at: None,
             };
             let todo = todo::create(&mut self.conn, todo)?;
             self.todo_list.add_todo(todo);
@@ -143,7 +156,16 @@ impl App {
             let id = self.todo_list.items[i].id;
             let new_status = self.todo_list.items[i].status.next();
 
-            todo::update_status(&mut self.conn, id, new_status)?;
+            let current_todo = todo::get_by_id(&mut self.conn, id)?;
+            let completed_at = match (current_todo.status, new_status) {
+                (Status::ToDo, Status::Done) => Some(Local::now().date_naive()),
+                (Status::InProgress, Status::Done) => Some(Local::now().date_naive()),
+                (Status::Done, Status::InProgress) => None,
+                (Status::Done, Status::ToDo) => None,
+                _ => current_todo.completed_at,
+            };
+
+            todo::update_status(&mut self.conn, id, new_status, completed_at)?;
         }
         self.todo_list.toggle_status();
         Ok(())
