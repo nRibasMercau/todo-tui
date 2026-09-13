@@ -1,5 +1,5 @@
 use crate::app::ActivePanel;
-use crate::app::App;
+use crate::app::{App, Dialog};
 use crate::ui::calendar;
 use crate::ui::todo_popup::Focus;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -11,8 +11,16 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
  */
 fn update_normal(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
-        KeyCode::Char('h') => app.active_panel = ActivePanel::Projects,
-        KeyCode::Char('l') => app.active_panel = ActivePanel::Todos,
+        KeyCode::Char('h') => {
+            if app.active_panel == ActivePanel::Todos {
+                app.active_panel = ActivePanel::Projects
+            }
+        }
+        KeyCode::Char('l') => {
+            if app.active_panel == ActivePanel::Projects {
+                app.active_panel = ActivePanel::Todos
+            }
+        }
         KeyCode::Esc | KeyCode::Char('q') => app.quit(),
 
         code => match app.active_panel {
@@ -27,6 +35,8 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
             ActivePanel::Projects => match code {
                 KeyCode::Char('j') => app.projects.select_next(),
                 KeyCode::Char('k') => app.projects.select_previous(),
+                KeyCode::Enter => app.open_project_popup(app.projects.state.selected()),
+                KeyCode::Char('a') => app.open_project_popup(None),
                 _ => {}
             },
         },
@@ -43,20 +53,33 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
     // We can't use q, because that's a valid character
     match key_event.code {
         KeyCode::Esc => {
-            app.popup = None;
+            app.dialog = None;
             return;
         }
 
         // Enter submits the form
         KeyCode::Enter => {
-            if app.popup.as_ref().unwrap().focus == Focus::DueDate {
-                let popup = app.popup.as_mut().unwrap();
-                popup.due_date = Some(popup.calendar_date);
-                popup.focus_next();
-            } else {
-                match app.submit_todo() {
+            if let Some(Dialog::Todo(popup)) = app.dialog.as_mut() {
+                if popup.focus == Focus::DueDate {
+                    popup.due_date = Some(popup.calendar_date);
+                    popup.focus_next();
+                } else {
+                    match app.submit_todo() {
+                        Ok(()) => {
+                            app.dialog = None;
+                            app.error_message = None;
+                        }
+                        Err(err) => {
+                            app.error_message = Some(err.to_string());
+                        }
+                    }
+                }
+            }
+
+            if let Some(Dialog::Project(_)) = app.dialog.as_mut() {
+                match app.submit_project() {
                     Ok(()) => {
-                        app.popup = None;
+                        app.dialog = None;
                         app.error_message = None;
                     }
                     Err(err) => {
@@ -68,7 +91,7 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
         _ => {}
     }
 
-    if let Some(popup) = app.popup.as_mut() {
+    if let Some(Dialog::Todo(popup)) = app.dialog.as_mut() {
         match key_event.code {
             // Tab changes focus
             KeyCode::Tab => {
@@ -161,14 +184,21 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
             },
         }
     }
+    if let Some(Dialog::Project(popup)) = app.dialog.as_mut() {
+        match key_event.code {
+            _ => popup.name.on_key_press(key_event),
+        }
+    }
 }
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
-    if app.popup.is_some() {
-        // Edit mode
-        update_edit(app, key_event);
+    if let Some(dialog) = &app.dialog {
+        match dialog {
+            Dialog::Todo(_) => update_edit(app, key_event),
+            Dialog::Project(_) => update_edit(app, key_event),
+            _ => {}
+        }
     } else {
-        // List mode
         update_normal(app, key_event);
     }
 }

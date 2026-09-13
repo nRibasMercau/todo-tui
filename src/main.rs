@@ -31,7 +31,8 @@ use update::update;
 fn init_logging() -> std::io::Result<()> {
     let file = OpenOptions::new()
         .create(true)
-        .append(true)
+        .write(true)
+        .truncate(true)
         .open("todo-tui.log")?;
 
     tracing_subscriber::fmt()

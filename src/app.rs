@@ -1,3 +1,4 @@
+use crate::ui::project_popup::ProjectPopup;
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
     db::{project, todo},
@@ -17,7 +18,7 @@ pub struct App {
     pub active_panel: ActivePanel,
     pub todo_list: TodoList,
     pub projects: ProjectList,
-    pub popup: Option<TodoPopup>,
+    pub dialog: Option<Dialog>,
     pub error_message: Option<String>,
 }
 
@@ -39,9 +40,22 @@ pub enum TodoListError {
 }
 
 #[derive(Debug)]
+pub enum ProjectListError {
+    ProjectNotFound,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum ActivePanel {
     Todos,
     Projects,
+}
+
+#[derive(Debug)]
+pub enum Dialog {
+    None,
+    Confirm { title: String, message: String },
+    Todo(TodoPopup),
+    Project(ProjectPopup),
 }
 
 impl App {
@@ -57,7 +71,7 @@ impl App {
             active_panel: ActivePanel::Todos,
             todo_list: TodoList::new(todos),
             projects: ProjectList::new(projects),
-            popup: None,
+            dialog: None,
             error_message: None,
         })
     }
@@ -70,83 +84,121 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn submit_todo(&mut self) -> rusqlite::Result<()> {
-        let Some(popup) = self.popup.take() else {
+    pub fn submit_project(&mut self) -> rusqlite::Result<()> {
+        let Some(dialog) = self.dialog.take() else {
             return Ok(());
         };
 
-        // Get the id of the todo from the popup
-        let todo_id = popup.id;
-
-        // Get NewTodo from the popup
-        let new_todo = popup.into_new_todo();
-
-        // Resolve project name
-        // If the project exists, get the id
-        // TODO: If the project doesn't exists, ask user
-        // For the moment, it's creating the new project by default
-        let project_id = match new_todo.project.as_deref() {
-            Some(project) => match project::get_by_name(&self.conn, &project)? {
-                Some(project_id) => Some(project_id),
-                None => {
-                    let new_project = project::create(
+        match dialog {
+            Dialog::Project(popup) => {
+                if let Some(project_id) = popup.id {
+                    let new_project = popup.into_new_project();
+                    let current_project = project::get_by_id(&mut self.conn, project_id)?;
+                    let project = project::update(
                         &mut self.conn,
-                        NewProject {
-                            name: project.to_string(),
+                        Project {
+                            id: current_project.id,
+                            name: new_project.name,
                             archived: false,
                         },
                     )?;
-
-                    Some(new_project.id)
+                    self.projects
+                        .replace_project(project)
+                        .expect("Internal error: updated must exist in ProjectList");
+                } else {
+                    let new_project = popup.into_new_project();
+                    let project = project::create(&mut self.conn, new_project)?;
+                    self.projects.add_project(project);
                 }
-            },
-            None => None,
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn submit_todo(&mut self) -> rusqlite::Result<()> {
+        let Some(dialog) = self.dialog.take() else {
+            return Ok(());
         };
 
-        // INSERT - UPDATE
-        // If popup.id is Some, it's an edit of an existing todo
-        // Update the existing todo
-        if let Some(todo_id) = todo_id {
-            let current_todo = todo::get_by_id(&mut self.conn, todo_id)?;
-            let completed_at = match (current_todo.status, new_todo.status) {
-                (Status::ToDo, Status::Done) => Some(Local::now().date_naive()),
-                (Status::InProgress, Status::Done) => Some(Local::now().date_naive()),
-                (Status::Done, Status::InProgress) => None,
-                (Status::Done, Status::ToDo) => None,
-                _ => current_todo.completed_at,
-            };
+        match dialog {
+            Dialog::Todo(popup) => {
+                // Get the id of the todo from the popup
+                let todo_id = popup.id;
 
-            let todo = TodoRecord {
-                id: todo_id,
-                todo: new_todo.todo,
-                info: new_todo.info,
-                status: new_todo.status,
-                project_id,
-                due_date: new_todo.due_date,
-                created_at: current_todo.created_at,
-                completed_at,
-            };
-            let todo = todo::update(&mut self.conn, todo)?;
-            self.todo_list
-                .replace_todo(todo)
-                .expect("Internal error: updated must exist in TodoList");
+                // Get NewTodo from the popup
+                let new_todo = popup.into_new_todo();
 
-        // If popup.id is None, it's a new todo
-        // Insert the new todo
-        } else {
-            // Build TodoRecord
-            let todo = NewTodoRecord {
-                todo: new_todo.todo,
-                info: new_todo.info,
-                status: new_todo.status,
-                project_id,
-                due_date: new_todo.due_date,
-                created_at: Local::now().date_naive(),
-                completed_at: None,
-            };
-            let todo = todo::create(&mut self.conn, todo)?;
-            self.todo_list.add_todo(todo);
-        };
+                // Resolve project name
+                // If the project exists, get the id
+                // TODO: If the project doesn't exists, ask user
+                // For the moment, it's creating the new project by default
+                let project_id = match new_todo.project.as_deref() {
+                    Some(project) => match project::get_by_name(&self.conn, &project)? {
+                        Some(project_id) => Some(project_id),
+                        None => {
+                            let new_project = project::create(
+                                &mut self.conn,
+                                NewProject {
+                                    name: project.to_string(),
+                                    archived: false,
+                                },
+                            )?;
+
+                            Some(new_project.id)
+                        }
+                    },
+                    None => None,
+                };
+
+                // INSERT - UPDATE
+                // If popup.id is Some, it's an edit of an existing todo
+                // Update the existing todo
+                if let Some(todo_id) = todo_id {
+                    let current_todo = todo::get_by_id(&mut self.conn, todo_id)?;
+                    let completed_at = match (current_todo.status, new_todo.status) {
+                        (Status::ToDo, Status::Done) => Some(Local::now().date_naive()),
+                        (Status::InProgress, Status::Done) => Some(Local::now().date_naive()),
+                        (Status::Done, Status::InProgress) => None,
+                        (Status::Done, Status::ToDo) => None,
+                        _ => current_todo.completed_at,
+                    };
+
+                    let todo = TodoRecord {
+                        id: todo_id,
+                        todo: new_todo.todo,
+                        info: new_todo.info,
+                        status: new_todo.status,
+                        project_id,
+                        due_date: new_todo.due_date,
+                        created_at: current_todo.created_at,
+                        completed_at,
+                    };
+                    let todo = todo::update(&mut self.conn, todo)?;
+                    self.todo_list
+                        .replace_todo(todo)
+                        .expect("Internal error: updated must exist in TodoList");
+
+                // If popup.id is None, it's a new todo
+                // Insert the new todo
+                } else {
+                    // Build TodoRecord
+                    let todo = NewTodoRecord {
+                        todo: new_todo.todo,
+                        info: new_todo.info,
+                        status: new_todo.status,
+                        project_id,
+                        due_date: new_todo.due_date,
+                        created_at: Local::now().date_naive(),
+                        completed_at: None,
+                    };
+                    let todo = todo::create(&mut self.conn, todo)?;
+                    self.todo_list.add_todo(todo);
+                };
+                self.active_panel = ActivePanel::Todos;
+            }
+            _ => {}
+        }
 
         Ok(())
     }
@@ -204,9 +256,19 @@ impl App {
         self.error_message = None;
         if let Some(item) = item {
             let todo_item = &self.todo_list.items[item];
-            self.popup = Some(TodoPopup::from_todo(todo_item));
+            self.dialog = Some(Dialog::Todo(TodoPopup::from_todo(todo_item)));
         } else {
-            self.popup = Some(TodoPopup::new());
+            self.dialog = Some(Dialog::Todo(TodoPopup::new()));
+        }
+    }
+
+    pub fn open_project_popup(&mut self, project_id: Option<usize>) {
+        self.error_message = None;
+        if let Some(project_id) = project_id {
+            let project = &self.projects.items[project_id];
+            self.dialog = Some(Dialog::Project(ProjectPopup::from_project(project)));
+        } else {
+            self.dialog = Some(Dialog::Project(ProjectPopup::new()));
         }
     }
 
@@ -292,6 +354,20 @@ impl ProjectList {
     /// Selects previous element in the list
     pub fn select_previous(&mut self) {
         self.state.select_previous();
+    }
+
+    pub fn add_project(&mut self, project: Project) {
+        self.items.push(project);
+    }
+
+    pub fn replace_project(&mut self, project: Project) -> Result<(), ProjectListError> {
+        match self.items.iter_mut().find(|i| i.id == project.id) {
+            Some(item) => {
+                *item = project;
+                Ok(())
+            }
+            None => Err(ProjectListError::ProjectNotFound),
+        }
     }
 }
 

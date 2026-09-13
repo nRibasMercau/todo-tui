@@ -5,7 +5,7 @@ pub mod project_list;
 pub mod project_popup;
 pub mod todo_list;
 pub mod todo_popup;
-use crate::app::App;
+use crate::app::{App, Dialog};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -29,13 +29,22 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     todo_list::render(app, frame, todos_area);
     project_list::render(app, frame, projects_area);
 
-    if let Some(popup) = &app.popup {
-        todo_popup::TodoPopup::render(popup, frame);
-        footer::render(
-            frame,
-            footer_area,
-            "Esc cancel     Tab move     Left/Right Toggle status      Enter save".to_string(),
-        )
+    if let Some(dialog) = &app.dialog {
+        match dialog {
+            Dialog::Todo(popup) => {
+                todo_popup::TodoPopup::render(popup, frame);
+                footer::render(
+                    frame,
+                    footer_area,
+                    "Esc cancel     Tab move     Left/Right Toggle status      Enter save"
+                        .to_string(),
+                )
+            }
+            Dialog::Project(popup) => {
+                project_popup::ProjectPopup::render(popup, frame);
+            }
+            _ => {}
+        }
     } else {
         footer::render(
             frame,

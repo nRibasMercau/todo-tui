@@ -35,6 +35,7 @@ pub fn get_by_name(conn: &Connection, project_name: &str) -> Result<Option<i64>>
 
 /// Gets project by iD
 pub fn get_by_id(conn: &Connection, project_id: i64) -> Result<Project> {
+    tracing::debug!("getting project");
     let mut stmt = conn.prepare(
         "
         SELECT id, name, archived

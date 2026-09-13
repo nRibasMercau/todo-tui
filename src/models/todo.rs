@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{Local, NaiveDate};
 use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, Value, ValueRef};
 use std::fmt;
 
@@ -100,6 +100,18 @@ pub struct Todo {
 impl Todo {
     pub fn toggle_status(&mut self) {
         self.status = self.status.next();
+    }
+
+    pub fn is_overdue(&self) -> bool {
+        if self.status == Status::Done {
+            return false;
+        }
+
+        if let Some(due_date) = self.due_date {
+            due_date < Local::now().date_naive()
+        } else {
+            false
+        }
     }
 }
 
