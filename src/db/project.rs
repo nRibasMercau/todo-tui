@@ -38,7 +38,7 @@ pub fn get_by_id(conn: &Connection, project_id: i64) -> Result<Project> {
     tracing::debug!("getting project");
     let mut stmt = conn.prepare(
         "
-        SELECT id, name, archived
+        SELECT id, name, archived, created_at
         FROM projects 
         WHERE id = ?1",
     )?;
@@ -48,6 +48,7 @@ pub fn get_by_id(conn: &Connection, project_id: i64) -> Result<Project> {
             id: row.get(0)?,
             name: row.get(1)?,
             archived: row.get(2)?,
+            created_at: row.get(3)?,
         })
     })?)
 }
@@ -56,7 +57,7 @@ pub fn get_by_id(conn: &Connection, project_id: i64) -> Result<Project> {
 pub fn get(conn: &Connection) -> Result<Vec<Project>> {
     let mut stmt = conn.prepare(
         "
-        SELECT id, name, archived
+        SELECT id, name, archived, created_at
         FROM projects
         ",
     )?;
@@ -67,6 +68,7 @@ pub fn get(conn: &Connection) -> Result<Vec<Project>> {
                 id: row.get("id")?,
                 name: row.get("name")?,
                 archived: row.get("archived")?,
+                created_at: row.get("created_at")?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -95,8 +97,12 @@ pub fn update(conn: &mut Connection, project: Project) -> Result<Project> {
 }
 
 /// Deletes a project.
-pub fn delete(conn: &Connection, project_id: i64) -> Result<()> {
-    conn.execute("DELETE FROM projects WHERE id = ?1", params![project_id])?;
+pub fn delete(conn: &mut Connection, project_id: i64) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    tx.execute("DELETE FROM projects WHERE id = ?1", params![project_id])?;
+
+    tx.commit()?;
 
     Ok(())
 }

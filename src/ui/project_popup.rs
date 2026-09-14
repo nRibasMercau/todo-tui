@@ -86,7 +86,7 @@ impl ProjectPopup {
 
     pub fn render(project_popup: &ProjectPopup, frame: &mut Frame) {
         let area = frame.area();
-        let centered_area = area.centered(Constraint::Percentage(60), Constraint::Percentage(10));
+        let centered_area = area.centered(Constraint::Percentage(60), Constraint::Percentage(15));
 
         frame.render_widget(Clear, centered_area);
 
@@ -109,5 +109,7 @@ impl ProjectPopup {
             is_focused: project_popup.focus == Focus::Name,
         };
         frame.render_widget(name_widget, inner_area);
+
+        frame.set_cursor_position(project_popup.name.cursor_position(inner_area));
     }
 }

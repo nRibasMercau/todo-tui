@@ -100,6 +100,7 @@ impl App {
                             id: current_project.id,
                             name: new_project.name,
                             archived: false,
+                            created_at: Local::now().date_naive(),
                         },
                     )?;
                     self.projects

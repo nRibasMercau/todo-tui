@@ -186,6 +186,8 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
     }
     if let Some(Dialog::Project(popup)) = app.dialog.as_mut() {
         match key_event.code {
+            KeyCode::Left => popup.name.cursor_left(),
+            KeyCode::Right => popup.name.cursor_right(),
             _ => popup.name.on_key_press(key_event),
         }
     }
