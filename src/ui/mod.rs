@@ -5,7 +5,7 @@ pub mod project_list;
 pub mod project_popup;
 pub mod todo_list;
 pub mod todo_popup;
-use crate::app::{App, Dialog};
+use crate::app::{ActivePanel, App, Dialog};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -42,14 +42,27 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             }
             Dialog::Project(popup) => {
                 project_popup::ProjectPopup::render(popup, frame);
+                footer::render(frame, footer_area, "Esc cancel     Enter save".to_string())
             }
             _ => {}
         }
     } else {
-        footer::render(
-            frame,
-            footer_area,
-            "q/Esc quit   j/k move    Spacebar change status     a add     Enter edit".to_string(),
-        );
+        match app.active_panel {
+            ActivePanel::Todos => {
+                footer::render(
+                    frame,
+                    footer_area,
+                    "q/Esc quit   j/k move    Spacebar change status     a add     Enter edit"
+                        .to_string(),
+                );
+            }
+            ActivePanel::Projects => {
+                footer::render(
+                    frame,
+                    footer_area,
+                    "q/Esc quit   j/k move    a add     Enter edit".to_string(),
+                );
+            }
+        }
     }
 }

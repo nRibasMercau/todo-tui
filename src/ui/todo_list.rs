@@ -43,7 +43,14 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 .padding(Padding::vertical(1))
                 .title(Span::styled("TODO", title_style(&app.active_panel)))
                 .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
+                .border_type(BorderType::Rounded)
+                .border_style(
+                    Style::default().fg(if &app.active_panel == &ActivePanel::Todos {
+                        Color::Yellow
+                    } else {
+                        Color::White
+                    }),
+                ),
         )
         .highlight_style(HIGHLIGHT_STYLE)
         .highlight_symbol("▶ ");
