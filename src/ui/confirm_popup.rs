@@ -1,12 +1,12 @@
 use ratatui::{
     Frame,
-    buffer::Buffer,
     prelude::*,
-    widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget},
+    widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph},
 };
 
 #[derive(Debug)]
 pub struct ConfirmPopup {
+    pub title: String,
     pub message: String,
     pub selected: ConfirmChoice,
 }
@@ -18,31 +18,31 @@ pub enum ConfirmChoice {
 }
 
 impl ConfirmPopup {
+    pub fn new(title: String, message: String) -> Self {
+        Self {
+            title,
+            message,
+            selected: ConfirmChoice::No,
+        }
+    }
+
     pub fn render(&self, frame: &mut Frame) {
         let area = frame.area();
-        let centered_area = area.centered(Constraint::Percentage(60), Constraint::Percentage(60));
-
-        frame.render_widget(Clear, centered_area);
+        let centered_area = area.centered(Constraint::Percentage(40), Constraint::Percentage(20));
 
         let block = Block::default()
-            .title("Todo")
+            .title(self.title.as_str())
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .padding(Padding::uniform(1));
 
-        let inner_area = block.inner(centered_area);
+        let text = format!("{}\n\nPress 'y' for Yes, 'n' for No", self.message);
+        let paragraph = Paragraph::new(text)
+            .block(block)
+            .alignment(Alignment::Center);
 
-        frame.render_widget(block, centered_area);
-
-        let [message_area, options_area] = inner_area.layout(&Layout::vertical([
-            Constraint::Length(2),
-            Constraint::Min(1),
-        ]));
-
-        let [yes_area, no_area] = options_area.layout(&Layout::horizontal([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ]));
+        frame.render_widget(Clear, centered_area);
+        frame.render_widget(paragraph, centered_area);
     }
 
     pub fn focus_next(&mut self) {

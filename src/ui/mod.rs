@@ -1,4 +1,5 @@
 pub mod calendar;
+pub mod confirm_popup;
 pub mod fields;
 pub mod footer;
 pub mod project_list;
@@ -44,6 +45,14 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 project_popup::ProjectPopup::render(popup, frame);
                 footer::render(frame, footer_area, "Esc cancel     Enter save".to_string())
             }
+            Dialog::Confirm(popup) => {
+                confirm_popup::ConfirmPopup::render(popup, frame);
+                footer::render(
+                    frame,
+                    footer_area,
+                    "Y confirm      N/Esc cancel".to_string(),
+                )
+            }
             _ => {}
         }
     } else {
@@ -52,7 +61,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 footer::render(
                     frame,
                     footer_area,
-                    "q/Esc quit   j/k move    Spacebar change status     a add     Enter edit"
+                    "q/Esc quit   j/k move    Spacebar change status     a add     d delete    Enter edit"
                         .to_string(),
                 );
             }
@@ -60,7 +69,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 footer::render(
                     frame,
                     footer_area,
-                    "q/Esc quit   j/k move    a add     Enter edit".to_string(),
+                    "q/Esc quit   j/k move    a add     d delete   d delete   Enter edit"
+                        .to_string(),
                 );
             }
         }

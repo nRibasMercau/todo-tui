@@ -1,3 +1,4 @@
+use crate::ui::confirm_popup::ConfirmPopup;
 use crate::ui::project_popup::ProjectPopup;
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
@@ -53,7 +54,7 @@ pub enum ActivePanel {
 #[derive(Debug)]
 pub enum Dialog {
     None,
-    Confirm { title: String, message: String },
+    Confirm(ConfirmPopup),
     Todo(TodoPopup),
     Project(ProjectPopup),
 }
@@ -271,6 +272,11 @@ impl App {
         } else {
             self.dialog = Some(Dialog::Project(ProjectPopup::new()));
         }
+    }
+
+    pub fn open_confirm_popup(&mut self, title: String, message: String) {
+        self.error_message = None;
+        self.dialog = Some(Dialog::Confirm(ConfirmPopup::new(title, message)));
     }
 
     pub fn find_project_id(&self, project_name: &str) -> Option<i64> {

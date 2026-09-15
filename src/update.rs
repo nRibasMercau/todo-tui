@@ -30,6 +30,13 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                 KeyCode::Char(' ') => app.toggle_status_todo().unwrap(),
                 KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
                 KeyCode::Char('a') => app.open_todo_popup(None),
+                KeyCode::Char('d') => {
+                    let todo = &app.todo_list.items[app.todo_list.state.selected().unwrap()];
+                    app.open_confirm_popup(
+                        String::from("Confirm"),
+                        format!("Delete task {:?}?", todo.todo),
+                    )
+                }
                 _ => {}
             },
             ActivePanel::Projects => match code {
@@ -37,6 +44,13 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                 KeyCode::Char('k') => app.projects.select_previous(),
                 KeyCode::Enter => app.open_project_popup(app.projects.state.selected()),
                 KeyCode::Char('a') => app.open_project_popup(None),
+                KeyCode::Char('d') => {
+                    let project = &app.projects.items[app.projects.state.selected().unwrap()];
+                    app.open_confirm_popup(
+                        String::from("Confirm"),
+                        format!("Delete project {:?}?", project.name),
+                    )
+                }
                 _ => {}
             },
         },
@@ -194,11 +208,10 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
 }
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
-    if let Some(dialog) = &app.dialog {
-        match dialog {
-            Dialog::Todo(_) => update_edit(app, key_event),
-            Dialog::Project(_) => update_edit(app, key_event),
-            _ => {}
+    if let Some(_) = &app.dialog {
+        match key_event.code {
+            KeyCode::Esc => app.dialog = None,
+            _ => update_edit(app, key_event),
         }
     } else {
         update_normal(app, key_event);
