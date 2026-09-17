@@ -36,7 +36,7 @@ pub fn create(conn: &mut Connection, todo: NewTodoRecord) -> Result<Todo> {
 pub fn get(conn: &Connection) -> Result<Vec<Todo>> {
     let mut stmt = conn.prepare(
         "
-            SELECT t.id, t.todo, t.info, t.status, p.name as project, t.due_date, t.created_at, t.completed_at
+            SELECT t.id, t.todo, t.info, t.status, t.project_id, p.name as project, t.due_date, t.created_at, t.completed_at
             FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
         ",
     )?;
@@ -47,6 +47,7 @@ pub fn get(conn: &Connection) -> Result<Vec<Todo>> {
                 todo: row.get("todo")?,
                 info: row.get("info")?,
                 status: row.get("status")?,
+                project_id: row.get("project_id")?,
                 project: row.get("project")?,
                 due_date: row.get("due_date")?,
                 created_at: row.get("created_at")?,
@@ -62,21 +63,22 @@ pub fn get(conn: &Connection) -> Result<Vec<Todo>> {
 pub fn get_by_id(conn: &Connection, todo_id: i64) -> Result<Todo> {
     let mut stmt = conn.prepare(
         "
-        SELECT t.id, t.todo, t.info, t.status, p.name AS project, t.due_date, t.created_at, t.completed_at
+        SELECT t.id, t.todo, t.info, t.status, t.project_id, p.name AS project, t.due_date, t.created_at, t.completed_at
         FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
         WHERE t.id = ?1",
     )?;
 
     Ok(stmt.query_row([todo_id], |row| {
         Ok(Todo {
-            id: row.get(0)?,
-            todo: row.get(1)?,
-            info: row.get(2)?,
-            status: row.get(3)?,
-            project: row.get(4)?,
-            due_date: row.get(5)?,
-            created_at: row.get(6)?,
-            completed_at: row.get(7)?,
+            id: row.get("id")?,
+            todo: row.get("todo")?,
+            info: row.get("info")?,
+            status: row.get("status")?,
+            project_id: row.get("project_id")?,
+            project: row.get("project")?,
+            due_date: row.get("due_date")?,
+            created_at: row.get("created_at")?,
+            completed_at: row.get("completed_at")?,
         })
     })?)
 }

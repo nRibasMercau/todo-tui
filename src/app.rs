@@ -131,6 +131,8 @@ impl App {
                 // Get NewTodo from the popup
                 let new_todo = popup.into_new_todo();
 
+                let mut new_project: Option<Project> = None;
+
                 // Resolve project name
                 // If the project exists, get the id
                 // TODO: If the project doesn't exists, ask user
@@ -139,15 +141,18 @@ impl App {
                     Some(project) => match project::get_by_name(&self.conn, &project)? {
                         Some(project_id) => Some(project_id),
                         None => {
-                            let new_project = project::create(
+                            let project = project::create(
                                 &mut self.conn,
                                 NewProject {
                                     name: project.to_string(),
                                     archived: false,
                                 },
                             )?;
+                            let project_id = project.id;
 
-                            Some(new_project.id)
+                            new_project = Some(project);
+
+                            Some(project_id)
                         }
                     },
                     None => None,
@@ -195,7 +200,12 @@ impl App {
                         completed_at: None,
                     };
                     let todo = todo::create(&mut self.conn, todo)?;
+                    // Add todo to the list
                     self.todo_list.add_todo(todo);
+                    // Add new project to the list, only if a new project was created
+                    if let Some(project) = new_project {
+                        self.projects.add_project(project);
+                    }
                 };
                 self.active_panel = ActivePanel::Todos;
             }
@@ -270,7 +280,7 @@ impl App {
         // Remove todos from the todo list
         self.todo_list
             .items
-            .retain(|todo| todo.project_id != project_id);
+            .retain(|todo| todo.project_id != Some(project_id));
 
         // Handle selection status
         // If there are no todos, select is None
@@ -330,6 +340,7 @@ impl
         String,
         String,
         Status,
+        Option<i64>,
         Option<String>,
         Option<NaiveDate>,
         NaiveDate,
@@ -344,6 +355,7 @@ impl
                 String,
                 String,
                 Status,
+                Option<i64>,
                 Option<String>,
                 Option<NaiveDate>,
                 NaiveDate,
@@ -354,11 +366,22 @@ impl
         let items: Vec<Todo> = iter
             .into_iter()
             .map(
-                |(id, todo, info, status, project, due_date, created_at, completed_at)| Todo {
+                |(
                     id,
                     todo,
                     info,
                     status,
+                    project_id,
+                    project,
+                    due_date,
+                    created_at,
+                    completed_at,
+                )| Todo {
+                    id,
+                    todo,
+                    info,
+                    status,
+                    project_id,
                     project,
                     due_date,
                     created_at,
