@@ -2,6 +2,8 @@ use chrono::{Local, NaiveDate};
 use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, Value, ValueRef};
 use std::fmt;
 
+pub type TodoId = i64;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Status {
     ToDo,

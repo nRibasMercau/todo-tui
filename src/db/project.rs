@@ -97,12 +97,8 @@ pub fn update(conn: &mut Connection, project: Project) -> Result<Project> {
 }
 
 /// Deletes a project.
-pub fn delete(conn: &mut Connection, project_id: i64) -> Result<()> {
-    let tx = conn.transaction()?;
-
-    tx.execute("DELETE FROM projects WHERE id = ?1", params![project_id])?;
-
-    tx.commit()?;
+pub fn delete(conn: &Connection, project_id: i64) -> Result<()> {
+    conn.execute("DELETE FROM projects WHERE id = ?1", params![project_id])?;
 
     Ok(())
 }

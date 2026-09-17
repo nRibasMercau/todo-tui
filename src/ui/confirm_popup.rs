@@ -1,3 +1,4 @@
+use crate::models::{project::ProjectId, todo::TodoId};
 use ratatui::{
     Frame,
     prelude::*,
@@ -8,6 +9,7 @@ use ratatui::{
 pub struct ConfirmPopup {
     pub title: String,
     pub message: String,
+    pub action: ConfirmAction,
     pub selected: ConfirmChoice,
 }
 
@@ -17,11 +19,18 @@ pub enum ConfirmChoice {
     No,
 }
 
+#[derive(Debug, Clone)]
+pub enum ConfirmAction {
+    DeleteProject(ProjectId),
+    DeleteTodo(TodoId),
+}
+
 impl ConfirmPopup {
-    pub fn new(title: String, message: String) -> Self {
+    pub fn new(title: String, message: String, action: ConfirmAction) -> Self {
         Self {
             title,
             message,
+            action,
             selected: ConfirmChoice::No,
         }
     }
@@ -43,19 +52,5 @@ impl ConfirmPopup {
 
         frame.render_widget(Clear, centered_area);
         frame.render_widget(paragraph, centered_area);
-    }
-
-    pub fn focus_next(&mut self) {
-        match &self.selected {
-            ConfirmChoice::Yes => self.selected = ConfirmChoice::No,
-            ConfirmChoice::No => self.selected = ConfirmChoice::Yes,
-        }
-    }
-
-    pub fn focus_previous(&mut self) {
-        match &self.selected {
-            ConfirmChoice::Yes => self.selected = ConfirmChoice::No,
-            ConfirmChoice::No => self.selected = ConfirmChoice::Yes,
-        }
     }
 }

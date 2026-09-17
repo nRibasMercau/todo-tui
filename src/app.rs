@@ -1,11 +1,11 @@
-use crate::ui::confirm_popup::ConfirmPopup;
+use crate::ui::confirm_popup::{ConfirmAction, ConfirmPopup};
 use crate::ui::project_popup::ProjectPopup;
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
     db::{project, todo},
     models::{
-        project::{NewProject, Project},
-        todo::{NewTodoRecord, Status, Todo, TodoRecord},
+        project::{NewProject, Project, ProjectId},
+        todo::{NewTodoRecord, Status, Todo, TodoId, TodoRecord},
     },
 };
 use chrono::{Local, NaiveDate};
@@ -225,31 +225,67 @@ impl App {
         Ok(())
     }
 
-    pub fn delete_todo(&mut self) -> rusqlite::Result<()> {
-        if let Some(i) = self.todo_list.state.selected() {
-            let todo_id = self.todo_list.items[i].id;
+    pub fn delete_todo(&mut self, todo_id: TodoId) -> rusqlite::Result<()> {
+        // Delete db record
+        todo::delete(&self.conn, todo_id)?;
 
-            // Delete db record
-            todo::delete(&self.conn, todo_id)?;
+        // Find index of the deleted todo in the current list
+        // before removing it
+        let i = self.todo_list.state.selected().unwrap_or(0);
 
-            // Remove item from the list
-            self.todo_list.items.retain(|todo| todo.id != todo_id);
+        // Remove item from the list
+        self.todo_list.items.retain(|todo| todo.id != todo_id);
 
-            // Handle selection status
-            // If there are no todos, select is None
-            if self.todo_list.items.is_empty() {
-                self.todo_list.state.select(None);
+        // Handle selection status
+        // If there are no todos, select is None
+        if self.todo_list.items.is_empty() {
+            self.todo_list.state.select(None);
             // If the deleted todo was the last one in the list,
             // select the new last one
-            } else if i >= self.todo_list.items.len() {
-                self.todo_list
-                    .state
-                    .select(Some(self.todo_list.items.len() - 1));
-            // Otherwise, select the new i
-            } else {
-                self.todo_list.state.select(Some(i));
-            }
-        };
+        } else if i >= self.todo_list.items.len() {
+            self.todo_list
+                .state
+                .select(Some(self.todo_list.items.len() - 1));
+        // Otherwise, select the new i
+        } else {
+            self.todo_list.state.select(Some(i));
+        }
+
+        Ok(())
+    }
+
+    pub fn delete_project(&mut self, project_id: ProjectId) -> rusqlite::Result<()> {
+        // Delete db record
+        project::delete(&self.conn, project_id)?;
+
+        // Find index of the deleted project in the current list
+        // before removing it
+        let i = self.projects.state.selected().unwrap_or(0);
+
+        // Remove project from the list
+        self.projects
+            .items
+            .retain(|project| project.id != project_id);
+
+        // Remove todos from the todo list
+        self.todo_list
+            .items
+            .retain(|todo| todo.project_id != project_id);
+
+        // Handle selection status
+        // If there are no todos, select is None
+        if self.projects.items.is_empty() {
+            self.projects.state.select(None);
+            // If the deleted todo was the last one in the list,
+            // select the new last one
+        } else if i >= self.projects.items.len() {
+            self.projects
+                .state
+                .select(Some(self.projects.items.len() - 1));
+        // Otherwise, select the new i
+        } else {
+            self.projects.state.select(Some(i));
+        }
 
         Ok(())
     }
@@ -274,9 +310,9 @@ impl App {
         }
     }
 
-    pub fn open_confirm_popup(&mut self, title: String, message: String) {
+    pub fn open_confirm_popup(&mut self, title: String, message: String, action: ConfirmAction) {
         self.error_message = None;
-        self.dialog = Some(Dialog::Confirm(ConfirmPopup::new(title, message)));
+        self.dialog = Some(Dialog::Confirm(ConfirmPopup::new(title, message, action)));
     }
 
     pub fn find_project_id(&self, project_name: &str) -> Option<i64> {

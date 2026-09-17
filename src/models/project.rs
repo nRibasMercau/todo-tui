@@ -1,5 +1,7 @@
 use chrono::NaiveDate;
 
+pub type ProjectId = i64;
+
 // Db record
 // and UI representation
 #[derive(Debug)]
