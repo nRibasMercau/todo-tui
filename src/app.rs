@@ -213,22 +213,19 @@ impl App {
         Ok(())
     }
 
-    pub fn toggle_status_todo(&mut self) -> rusqlite::Result<()> {
-        if let Some(i) = self.todo_list.state.selected() {
-            let id = self.todo_list.items[i].id;
-            let new_status = self.todo_list.items[i].status.next();
+    pub fn toggle_status_todo(&mut self, todo_id: TodoId) -> rusqlite::Result<()> {
+        let current_todo = todo::get_by_id(&mut self.conn, todo_id)?;
+        let new_status = current_todo.status.next();
 
-            let current_todo = todo::get_by_id(&mut self.conn, id)?;
-            let completed_at = match (current_todo.status, new_status) {
-                (Status::ToDo, Status::Done) => Some(Local::now().date_naive()),
-                (Status::InProgress, Status::Done) => Some(Local::now().date_naive()),
-                (Status::Done, Status::InProgress) => None,
-                (Status::Done, Status::ToDo) => None,
-                _ => current_todo.completed_at,
-            };
+        let completed_at = match (current_todo.status, new_status) {
+            (Status::ToDo, Status::Done) => Some(Local::now().date_naive()),
+            (Status::InProgress, Status::Done) => Some(Local::now().date_naive()),
+            (Status::Done, Status::InProgress) => None,
+            (Status::Done, Status::ToDo) => None,
+            _ => current_todo.completed_at,
+        };
 
-            todo::update_status(&mut self.conn, id, new_status, completed_at)?;
-        }
+        todo::update_status(&mut self.conn, current_todo.id, new_status, completed_at)?;
         self.todo_list.toggle_status();
         Ok(())
     }

@@ -37,7 +37,13 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
             ActivePanel::Todos => match code {
                 KeyCode::Char('j') => app.todo_list.select_next(),
                 KeyCode::Char('k') => app.todo_list.select_previous(),
-                KeyCode::Char(' ') => app.toggle_status_todo().unwrap(),
+                KeyCode::Char(' ') => {
+                    let todo = &app.todo_list.items[app.todo_list.state.selected().unwrap()];
+                    match app.toggle_status_todo(todo.id) {
+                        Ok(()) => {}
+                        Err(err) => app.error_message = Some(err.to_string()),
+                    }
+                }
                 KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
                 KeyCode::Char('a') => app.open_todo_popup(None),
                 KeyCode::Char('d') => {
