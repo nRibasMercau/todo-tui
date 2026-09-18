@@ -1,5 +1,4 @@
-use crate::app::ActivePanel;
-use crate::app::{App, Dialog};
+use crate::app::{ActivePanel, App, Dialog};
 use crate::ui::calendar;
 use crate::ui::confirm_popup::{ConfirmAction, ConfirmPopup};
 use crate::ui::project_popup::ProjectPopup;

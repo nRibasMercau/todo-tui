@@ -1,5 +1,4 @@
-use crate::app::ActivePanel;
-use crate::app::App;
+use crate::app::{ActivePanel, App};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};

@@ -6,8 +6,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem, Padding},
 };
 
-use crate::app::ActivePanel;
-use crate::app::App;
+use crate::app::{ActivePanel, App};
 use crate::models::todo::Status;
 
 const LIST_HIGHLIGHT_STYLE: Style = Style::new().fg(Color::Yellow);
