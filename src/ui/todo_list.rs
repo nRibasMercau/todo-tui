@@ -27,11 +27,11 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         ListItem::new(Line::from(vec![
             Span::raw(format!("{} ", status_icon(item.status))),
             Span::styled(
-                format!("{} ", item.status.to_string()),
+                format!("{:<14} | ", item.status.to_string()),
                 status_style(item.status),
             ),
-            Span::styled(format!("{}", item.todo), item_style(item.status)),
-            Span::raw(format!(" {} ", item.project.as_deref().unwrap_or(""))),
+            Span::styled(format!("{:<30} | ", item.todo), item_style(item.status)),
+            Span::raw(format!("{:<15} | ", item.project.as_deref().unwrap_or(""))),
             //TODO: style due_date: if date is overdue, color should be red
             Span::raw(format!("{}", due_date)),
         ]))
