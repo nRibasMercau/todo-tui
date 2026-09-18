@@ -37,6 +37,9 @@ pub fn get(conn: &Connection) -> Result<Vec<Todo>> {
         "
             SELECT t.id, t.todo, t.info, t.status, t.project_id, p.name as project, t.due_date, t.created_at, t.completed_at
             FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
+            ORDER BY
+            CASE WHEN status = 'in_progress' THEN 1 WHEN status = 'todo' THEN 2 ELSE 3 END asc,
+            due_date asc
         ",
     )?;
     let todos = stmt
@@ -214,7 +217,7 @@ mod tests {
             status: Status::ToDo,
             info: String::from("This is a test todo 1"),
             project_id: None,
-            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            due_date: None,
             completed_at: None,
         };
 
@@ -223,7 +226,7 @@ mod tests {
             status: Status::ToDo,
             info: String::from("This is a test todo 2"),
             project_id: None,
-            due_date: None,
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
             completed_at: None,
         };
 

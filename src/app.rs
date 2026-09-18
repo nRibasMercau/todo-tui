@@ -473,3 +473,170 @@ impl TodoList {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::migrations::migrate;
+    use crate::update::update;
+    use chrono::Local;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rusqlite::Result;
+
+    fn test_db() -> Result<Connection> {
+        let mut conn = Connection::open_in_memory()?;
+        migrate(&mut conn)?;
+        Ok(conn)
+    }
+
+    #[test]
+    fn pressing_a_in_projects_opens_project_popup() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        app.active_panel = ActivePanel::Projects;
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+        );
+
+        assert!(matches!(app.dialog, Some(Dialog::Project(_))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn pressing_a_in_todos_opens_todo_popup() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        app.active_panel = ActivePanel::Todos;
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+        );
+
+        assert!(matches!(app.dialog, Some(Dialog::Todo(_))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn todo_list_select_next() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        assert_eq!(app.todo_list.state.selected(), None);
+
+        let todos: Vec<Todo> = vec![
+            Todo {
+                id: 1,
+                todo: String::from("Todo 1"),
+                info: String::from("My todo 1"),
+                status: Status::ToDo,
+                project_id: None,
+                project: None,
+                due_date: None,
+                created_at: Local::now().date_naive(),
+                completed_at: None,
+            },
+            Todo {
+                id: 2,
+                todo: String::from("Todo 2"),
+                info: String::from("My todo 2"),
+                status: Status::ToDo,
+                project_id: None,
+                project: None,
+                due_date: None,
+                created_at: Local::now().date_naive(),
+                completed_at: None,
+            },
+        ];
+
+        app.todo_list.items = todos;
+
+        app.active_panel = ActivePanel::Todos;
+
+        app.todo_list.state.select(Some(0));
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.todo_list.state.selected(), Some(1));
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.todo_list.state.selected(), Some(2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn todo_list_select_previous() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        assert_eq!(app.todo_list.state.selected(), None);
+
+        let todos: Vec<Todo> = vec![
+            Todo {
+                id: 1,
+                todo: String::from("Todo 1"),
+                info: String::from("My todo 1"),
+                status: Status::ToDo,
+                project_id: None,
+                project: None,
+                due_date: None,
+                created_at: Local::now().date_naive(),
+                completed_at: None,
+            },
+            Todo {
+                id: 2,
+                todo: String::from("Todo 2"),
+                info: String::from("My todo 2"),
+                status: Status::ToDo,
+                project_id: None,
+                project: None,
+                due_date: None,
+                created_at: Local::now().date_naive(),
+                completed_at: None,
+            },
+        ];
+
+        app.todo_list.items = todos;
+
+        app.active_panel = ActivePanel::Todos;
+
+        app.todo_list.state.select(Some(2));
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.todo_list.state.selected(), Some(1));
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.todo_list.state.selected(), Some(0));
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.todo_list.state.selected(), Some(0));
+
+        Ok(())
+    }
+}
