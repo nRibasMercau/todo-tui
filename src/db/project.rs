@@ -102,3 +102,168 @@ pub fn delete(conn: &Connection, project_id: i64) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::migrations::migrate;
+
+    fn test_db() -> Result<Connection> {
+        let mut conn = Connection::open_in_memory()?;
+        migrate(&mut conn)?;
+        Ok(conn)
+    }
+
+    #[test]
+    fn creates_project() -> Result<()> {
+        let mut conn = test_db()?;
+
+        let new_project = NewProject {
+            name: String::from("My project"),
+        };
+
+        let project = create(&mut conn, new_project)?;
+
+        assert_eq!(project.name, "My project");
+
+        let projects = get(&conn)?;
+
+        assert_eq!(projects.len(), 1);
+        assert_eq!(projects[0].id, project.id);
+        assert_eq!(projects[0].name, project.name);
+        assert_eq!(projects[0].archived, project.archived);
+
+        Ok(())
+    }
+
+    #[test]
+    fn deletes_project() -> Result<()> {
+        let mut conn = test_db()?;
+
+        let new_project = NewProject {
+            name: String::from("My project"),
+        };
+
+        let project = create(&mut conn, new_project)?;
+
+        delete(&mut conn, project.id)?;
+
+        let projects = get(&mut conn)?;
+
+        assert!(projects.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn gets_projects() -> Result<()> {
+        let mut conn = test_db()?;
+
+        let project_1 = NewProject {
+            name: String::from("My project 1"),
+        };
+
+        let project_2 = NewProject {
+            name: String::from("My project 2"),
+        };
+
+        create(&mut conn, project_1)?;
+        create(&mut conn, project_2)?;
+
+        let projects = get(&conn)?;
+
+        assert_eq!(projects.len(), 2);
+        assert_eq!(projects[0].name, "My project 1");
+        assert_eq!(projects[1].name, "My project 2");
+        assert_eq!(projects[0].archived, false);
+        assert_eq!(projects[1].archived, false);
+
+        Ok(())
+    }
+
+    #[test]
+    fn gets_project_by_id() -> Result<()> {
+        let mut conn = test_db()?;
+
+        let project_1 = NewProject {
+            name: String::from("My project 1"),
+        };
+
+        let project_2 = NewProject {
+            name: String::from("My project 2"),
+        };
+
+        let project_1 = create(&mut conn, project_1)?;
+        let project_2 = create(&mut conn, project_2)?;
+
+        let project_1_result = get_by_id(&conn, project_1.id)?;
+        let project_2_result = get_by_id(&conn, project_2.id)?;
+
+        assert_eq!(project_1_result.id, project_1.id);
+        assert_eq!(project_1_result.name, project_1.name);
+        assert_eq!(project_1_result.archived, project_1.archived);
+
+        assert_eq!(project_2_result.id, project_2.id);
+        assert_eq!(project_2_result.name, project_2.name);
+        assert_eq!(project_2_result.archived, project_2.archived);
+
+        Ok(())
+    }
+
+    #[test]
+    fn gets_project_by_name() -> Result<()> {
+        let mut conn = test_db()?;
+
+        let new_project = NewProject {
+            name: String::from("My project"),
+        };
+
+        let project = create(&mut conn, new_project)?;
+
+        let existing_project_id = get_by_name(&mut conn, &project.name)?;
+        let nonexisting_project_id = get_by_name(&mut conn, "Inexistent project")?;
+
+        assert!(existing_project_id.is_some());
+        assert_eq!(existing_project_id, Some(project.id));
+        assert!(!nonexisting_project_id.is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn updates_project() -> Result<()> {
+        let mut conn = test_db()?;
+
+        let new_project = NewProject {
+            name: String::from("My project"),
+        };
+
+        let project = create(&mut conn, new_project)?;
+
+        let updated_project = Project {
+            id: project.id,
+            name: String::from("My project UPDATED"),
+            archived: false,
+            created_at: project.created_at,
+        };
+
+        update(&mut conn, updated_project)?;
+
+        let project = get_by_id(&conn, project.id)?;
+
+        assert_eq!(project.name, "My project UPDATED");
+
+        let updated_project = Project {
+            id: project.id,
+            name: String::from("My project UPDATED"),
+            archived: true,
+            created_at: project.created_at,
+        };
+
+        update(&mut conn, updated_project)?;
+
+        assert_eq!(project.archived, false);
+
+        Ok(())
+    }
+}

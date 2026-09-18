@@ -80,7 +80,6 @@ impl ProjectPopup {
     pub fn into_new_project(self) -> NewProject {
         NewProject {
             name: self.name.stringfield_to_string(),
-            archived: false,
         }
     }
 

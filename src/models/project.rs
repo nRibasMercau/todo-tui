@@ -16,14 +16,10 @@ pub struct Project {
 #[derive(Debug)]
 pub struct NewProject {
     pub name: String,
-    pub archived: bool,
 }
 
 impl NewProject {
     pub fn new(name: String) -> Self {
-        Self {
-            name,
-            archived: false,
-        }
+        Self { name }
     }
 }

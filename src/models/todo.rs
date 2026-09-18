@@ -158,6 +158,5 @@ pub struct NewTodoRecord {
     pub status: Status,
     pub project_id: Option<i64>,
     pub due_date: Option<NaiveDate>,
-    pub created_at: NaiveDate,
     pub completed_at: Option<NaiveDate>,
 }

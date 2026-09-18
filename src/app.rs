@@ -145,7 +145,6 @@ impl App {
                                 &mut self.conn,
                                 NewProject {
                                     name: project.to_string(),
-                                    archived: false,
                                 },
                             )?;
                             let project_id = project.id;
@@ -181,7 +180,7 @@ impl App {
                         created_at: current_todo.created_at,
                         completed_at,
                     };
-                    let todo = todo::update(&mut self.conn, todo)?;
+                    let todo = todo::update(&mut self.conn, &todo)?;
                     self.todo_list
                         .replace_todo(todo)
                         .expect("Internal error: updated must exist in TodoList");
@@ -196,10 +195,9 @@ impl App {
                         status: new_todo.status,
                         project_id,
                         due_date: new_todo.due_date,
-                        created_at: Local::now().date_naive(),
                         completed_at: None,
                     };
-                    let todo = todo::create(&mut self.conn, todo)?;
+                    let todo = todo::create(&mut self.conn, &todo)?;
                     // Add todo to the list
                     self.todo_list.add_todo(todo);
                     // Add new project to the list, only if a new project was created
