@@ -8,8 +8,8 @@ use ratatui::{
 
 use crate::app::{ActivePanel, App};
 use crate::models::todo::Status;
+use crate::ui::styles::{ACTIVE, INACTIVE};
 
-const LIST_HIGHLIGHT_STYLE: Style = Style::new().fg(Color::Yellow);
 const HIGHLIGHT_STYLE: Style = Style::new().add_modifier(Modifier::BOLD);
 const TODO_STYLE: Style = Style::new();
 const INPROGRESS_STYLE: Style = Style::new().fg(Color::Yellow);
@@ -17,6 +17,9 @@ const DONE_STYLE: Style = Style::new().fg(Color::Green);
 const DONE_ITEM_STYLE: Style = Style::new().add_modifier(Modifier::CROSSED_OUT);
 
 pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
+    let active = app.active_panel == ActivePanel::Todos;
+    let style = if active { ACTIVE } else { INACTIVE };
+
     let items = app.todo_list.items.iter().map(|item| {
         let due_date = match item.due_date {
             Some(date) => date.to_string(),
@@ -40,16 +43,10 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         .block(
             Block::default()
                 .padding(Padding::vertical(1))
-                .title(Span::styled("TODO", title_style(&app.active_panel)))
+                .title(Span::styled("TODO", style))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .border_style(
-                    Style::default().fg(if &app.active_panel == &ActivePanel::Todos {
-                        Color::Yellow
-                    } else {
-                        Color::White
-                    }),
-                ),
+                .border_style(style),
         )
         .highlight_style(HIGHLIGHT_STYLE)
         .highlight_symbol("▶ ");
@@ -76,12 +73,5 @@ fn item_style(status: Status) -> Style {
     match status {
         Status::Done => DONE_ITEM_STYLE,
         _ => Style::default(),
-    }
-}
-
-fn title_style(active_panel: &ActivePanel) -> Style {
-    match active_panel {
-        ActivePanel::Todos => LIST_HIGHLIGHT_STYLE,
-        ActivePanel::Projects => Style::new(),
     }
 }

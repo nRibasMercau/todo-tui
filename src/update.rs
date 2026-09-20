@@ -34,24 +34,20 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
 
         code => match app.active_panel {
             ActivePanel::Todos => match code {
-                KeyCode::Char('j') => app.todo_list.select_next(),
-                KeyCode::Char('k') => app.todo_list.select_previous(),
+                KeyCode::Char('j') => app.todo_table.select_next(),
+                KeyCode::Char('k') => app.todo_table.select_previous(),
                 KeyCode::Char(' ') => {
-                    let todo = &app.todo_list.items[app.todo_list.state.selected().unwrap()];
-                    match app.toggle_status_todo(todo.id) {
+                    match app.toggle_status_todo(app.todo_table.state.selected()) {
                         Ok(()) => {}
                         Err(err) => app.error_message = Some(err.to_string()),
                     }
                 }
-                KeyCode::Enter => app.open_todo_popup(app.todo_list.state.selected()),
+                KeyCode::Enter => app.open_todo_popup(app.todo_table.state.selected()),
                 KeyCode::Char('a') => app.open_todo_popup(None),
                 KeyCode::Char('d') => {
-                    let todo = &app.todo_list.items[app.todo_list.state.selected().unwrap()];
-                    app.open_confirm_popup(
-                        String::from("Confirm"),
-                        format!("Delete task {:?}?", todo.todo),
-                        ConfirmAction::DeleteTodo(todo.id),
-                    )
+                    if let Some(index) = app.todo_table.state.selected() {
+                        app.open_confirm_delete_todo(index)
+                    };
                 }
                 _ => {}
             },
@@ -61,12 +57,9 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                 KeyCode::Enter => app.open_project_popup(app.projects.state.selected()),
                 KeyCode::Char('a') => app.open_project_popup(None),
                 KeyCode::Char('d') => {
-                    let project = &app.projects.items[app.projects.state.selected().unwrap()];
-                    app.open_confirm_popup(
-                        String::from("Confirm"),
-                        format!("Delete project {:?}?", project.name),
-                        ConfirmAction::DeleteProject(project.id),
-                    )
+                    if let Some(index) = app.todo_table.state.selected() {
+                        app.open_confirm_delete_project(index)
+                    }
                 }
                 _ => {}
             },

@@ -4,8 +4,10 @@ pub mod fields;
 pub mod footer;
 pub mod project_list;
 pub mod project_popup;
+pub mod styles;
 pub mod todo_list;
 pub mod todo_popup;
+pub mod todo_table;
 use crate::app::{ActivePanel, App, Dialog};
 use ratatui::{
     Frame,
@@ -27,7 +29,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Constraint::Percentage(80),
     ]));
 
-    todo_list::render(app, frame, todos_area);
+    //todo_list::render(app, frame, todos_area);
+    todo_table::render(app, frame, todos_area);
     project_list::render(app, frame, projects_area);
 
     if let Some(dialog) = &app.dialog {

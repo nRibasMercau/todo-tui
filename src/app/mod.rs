@@ -1,10 +1,12 @@
 pub mod project_list;
 pub mod todo_list;
+pub mod todo_table;
 
 pub use project_list::ProjectList;
 pub use todo_list::TodoList;
+pub use todo_table::TodoTable;
 
-use crate::ui::confirm_popup::{ConfirmAction, ConfirmPopup};
+use crate::ui::confirm_popup::{ConfirmAction, ConfirmChoice, ConfirmPopup};
 use crate::ui::project_popup::ProjectPopup;
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
@@ -26,6 +28,7 @@ pub struct App {
     pub projects: ProjectList,
     pub dialog: Option<Dialog>,
     pub error_message: Option<String>,
+    pub todo_table: TodoTable,
 }
 
 #[derive(Debug, PartialEq)]
@@ -53,10 +56,11 @@ impl App {
             conn,
             should_quit: false,
             active_panel: ActivePanel::Todos,
-            todo_list: TodoList::new(todos),
+            todo_list: TodoList::new(vec![]),
             projects: ProjectList::new(projects),
             dialog: None,
             error_message: None,
+            todo_table: TodoTable::new(todos),
         })
     }
 
@@ -196,8 +200,14 @@ impl App {
         Ok(())
     }
 
-    pub fn toggle_status_todo(&mut self, todo_id: TodoId) -> rusqlite::Result<()> {
-        let current_todo = todo::get_by_id(&mut self.conn, todo_id)?;
+    pub fn toggle_status_todo(&mut self, item: Option<usize>) -> rusqlite::Result<()> {
+        let Some(index) = item else {
+            return Ok(());
+        };
+
+        let todo = &self.todo_table.items[index];
+
+        let current_todo = todo::get_by_id(&mut self.conn, todo.id)?;
         let new_status = current_todo.status.next();
 
         let completed_at = match (current_todo.status, new_status) {
@@ -209,7 +219,7 @@ impl App {
         };
 
         todo::update_status(&mut self.conn, current_todo.id, new_status, completed_at)?;
-        self.todo_list.toggle_status();
+        self.todo_table.toggle_status(index);
         Ok(())
     }
 
@@ -281,7 +291,7 @@ impl App {
     pub fn open_todo_popup(&mut self, item: Option<usize>) {
         self.error_message = None;
         if let Some(item) = item {
-            let todo_item = &self.todo_list.items[item];
+            let todo_item = &self.todo_table.items[item];
             self.dialog = Some(Dialog::Todo(TodoPopup::from_todo(todo_item)));
         } else {
             self.dialog = Some(Dialog::Todo(TodoPopup::new()));
@@ -298,9 +308,30 @@ impl App {
         }
     }
 
-    pub fn open_confirm_popup(&mut self, title: String, message: String, action: ConfirmAction) {
-        self.error_message = None;
-        self.dialog = Some(Dialog::Confirm(ConfirmPopup::new(title, message, action)));
+    pub fn open_confirm_delete_todo(&mut self, index: usize) {
+        let Some(todo) = self.todo_table.items.get(index) else {
+            return;
+        };
+
+        self.dialog = Some(Dialog::Confirm(ConfirmPopup {
+            title: "Delete todo".into(),
+            message: format!("Delete task \"{}\"?", todo.todo),
+            action: ConfirmAction::DeleteTodo(todo.id),
+            selected: ConfirmChoice::No,
+        }));
+    }
+
+    pub fn open_confirm_delete_project(&mut self, index: usize) {
+        let Some(project) = self.projects.items.get(index) else {
+            return;
+        };
+
+        self.dialog = Some(Dialog::Confirm(ConfirmPopup {
+            title: "Delete project".into(),
+            message: format!("Delete project\"{}\"?", project.name),
+            action: ConfirmAction::DeleteProject(project.id),
+            selected: ConfirmChoice::No,
+        }));
     }
 
     pub fn find_project_id(&self, project_name: &str) -> Option<i64> {
