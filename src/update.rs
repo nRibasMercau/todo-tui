@@ -6,7 +6,20 @@ use crate::ui::todo_popup::{Focus, TodoPopup, TodoPopupMode};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /*
- * List mode
+ * Main update:
+ * if no dialog is open, normal mode
+ * if there is a dialog open, edit mode
+ */
+pub fn update(app: &mut App, key_event: KeyEvent) {
+    if app.dialog.is_some() {
+        update_edit(app, key_event);
+    } else {
+        update_normal(app, key_event);
+    }
+}
+
+/*
+ * Normal mode
  * The following key bindings will apply only when there is no popup
  * open and the list is visible
  */
@@ -82,6 +95,8 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
         return;
     };
 
+    // WARN: update is mutating app state here (update of app.dialog)
+    // Shouldn't this be responsibility of app?
     app.dialog = match dialog {
         Dialog::Todo(popup) => update_todo(app, popup, key_event).map(Dialog::Todo),
         Dialog::Project(popup) => update_project(app, popup, key_event).map(Dialog::Project),
@@ -89,6 +104,16 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
     };
 }
 
+/*
+ * Update with confirm dialog open
+ * Key y used for confirming -> triggers action in app
+ * possible actions: delete project, delete todo
+ * Keys n/Esc used for cancelling
+ * Returns: Option<ConfirmPopup>
+ * The return value is consumed by update_edit to update app.dialog
+ * If y/n/Esc keys are pressed, action is triggered and dialog is closed
+ * If other keys are pressed, the same popup is returned
+ */
 fn update_confirm(app: &mut App, popup: ConfirmPopup, key_event: KeyEvent) -> Option<ConfirmPopup> {
     match key_event.code {
         KeyCode::Char('y') => match popup.action {
@@ -113,6 +138,16 @@ fn update_confirm(app: &mut App, popup: ConfirmPopup, key_event: KeyEvent) -> Op
     Some(popup)
 }
 
+/*
+ * Update todo
+ * Keys used when Todo dialog is open
+ * Enter submits -> triggers action in app
+ * Possible actions: add todo, update todo
+ * Returns: Option<TodoPopup>
+ * The return value is consumed by update_edit to update app.dialog
+ * If Enter/Esc keys are pressed, action is triggered and dialog is closed
+ * If other keys are pressed, the same popup is returned
+ */
 fn update_todo(app: &mut App, mut popup: TodoPopup, key_event: KeyEvent) -> Option<TodoPopup> {
     match key_event.code {
         // Tab changes focus
@@ -194,6 +229,16 @@ fn update_todo(app: &mut App, mut popup: TodoPopup, key_event: KeyEvent) -> Opti
     Some(popup)
 }
 
+/*
+ * Update project
+ * Keys used when Project dialog is open
+ * Enter submits -> triggers action in app
+ * Possible actions: add project, update project
+ * Returns: Option<ProjectPopup>
+ * The return value is consumed by update_edit to update app.dialog
+ * If Enter/Esc keys are pressed, action is triggered and dialog is closed
+ * If other keys are pressed, the same popup is returned
+ */
 fn update_project(
     app: &mut App,
     mut popup: ProjectPopup,
@@ -233,12 +278,4 @@ fn update_project(
         }
     }
     Some(popup)
-}
-
-pub fn update(app: &mut App, key_event: KeyEvent) {
-    if app.dialog.is_some() {
-        update_edit(app, key_event);
-    } else {
-        update_normal(app, key_event);
-    }
 }
