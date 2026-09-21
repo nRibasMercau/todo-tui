@@ -7,6 +7,11 @@ pub struct TodoTable {
     pub state: TableState,
 }
 
+#[derive(Debug)]
+pub enum TodoTableError {
+    TodoNotFound,
+}
+
 impl TodoTable {
     pub fn new(items: Vec<Todo>) -> Self {
         let mut state = TableState::default();
@@ -48,6 +53,20 @@ impl TodoTable {
 
     pub fn toggle_status(&mut self, index: usize) {
         self.items[index].status = self.items[index].status.next()
+    }
+
+    pub fn add_todo(&mut self, todo: Todo) {
+        self.items.push(todo);
+    }
+
+    pub fn replace_todo(&mut self, todo_item: Todo) -> Result<(), TodoTableError> {
+        match self.items.iter_mut().find(|i| i.id == todo_item.id) {
+            Some(item) => {
+                *item = todo_item;
+                Ok(())
+            }
+            None => Err(TodoTableError::TodoNotFound),
+        }
     }
 }
 

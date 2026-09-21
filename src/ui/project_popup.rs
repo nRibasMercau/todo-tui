@@ -1,4 +1,4 @@
-use crate::models::project::{NewProject, Project};
+use crate::models::project::{NewProject, Project, ProjectFormData, ProjectId};
 use crate::ui::fields::StringField;
 use ratatui::{
     Frame,
@@ -8,7 +8,14 @@ use ratatui::{
 };
 
 #[derive(Debug)]
+pub enum ProjectPopupMode {
+    Create,
+    Edit(ProjectId),
+}
+
+#[derive(Debug)]
 pub struct ProjectPopup {
+    pub mode: ProjectPopupMode,
     pub id: Option<i64>,
     pub name: StringField,
     pub focus: Focus,
@@ -63,6 +70,7 @@ impl Widget for StringFieldWidget<'_> {
 impl ProjectPopup {
     pub fn new() -> Self {
         Self {
+            mode: ProjectPopupMode::Create,
             id: None,
             name: StringField::blank("Name"),
             focus: Focus::Name,
@@ -71,15 +79,23 @@ impl ProjectPopup {
 
     pub fn from_project(project: &Project) -> Self {
         Self {
+            mode: ProjectPopupMode::Edit(project.id),
             id: Some(project.id),
             name: StringField::new("Name", project.name.clone()),
             focus: Focus::Name,
         }
     }
 
-    pub fn into_new_project(self) -> NewProject {
+    pub fn into_new_project(&self) -> NewProject {
         NewProject {
             name: self.name.stringfield_to_string(),
+        }
+    }
+
+    pub fn into_form_data(&self) -> ProjectFormData {
+        ProjectFormData {
+            name: self.name.stringfield_to_string(),
+            archived: false,
         }
     }
 

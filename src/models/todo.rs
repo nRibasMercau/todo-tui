@@ -130,6 +130,18 @@ pub struct NewTodo {
     pub due_date: Option<NaiveDate>,
 }
 
+/*
+ * Information to update an existing todo
+ */
+#[derive(Debug)]
+pub struct TodoFormData {
+    pub todo: String,
+    pub info: String,
+    pub status: Status,
+    pub project: Option<String>,
+    pub due_date: Option<NaiveDate>,
+}
+
 impl NewTodo {
     pub fn new(
         status: Status,

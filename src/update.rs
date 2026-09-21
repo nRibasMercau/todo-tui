@@ -1,17 +1,9 @@
 use crate::app::{ActivePanel, App, Dialog};
 use crate::ui::calendar;
 use crate::ui::confirm_popup::{ConfirmAction, ConfirmPopup};
-use crate::ui::project_popup::ProjectPopup;
-use crate::ui::todo_popup::{Focus, TodoPopup};
+use crate::ui::project_popup::{ProjectPopup, ProjectPopupMode};
+use crate::ui::todo_popup::{Focus, TodoPopup, TodoPopupMode};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-
-enum DialogAction {
-    None,
-    Close,
-    SubmitTodo,
-    SubmitProject,
-    Confirm(ConfirmAction),
-}
 
 /*
  * List mode
@@ -42,11 +34,15 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                         Err(err) => app.error_message = Some(err.to_string()),
                     }
                 }
-                KeyCode::Enter => app.open_todo_popup(app.todo_table.state.selected()),
-                KeyCode::Char('a') => app.open_todo_popup(None),
+                KeyCode::Enter => {
+                    if let Some(index) = app.todo_table.state.selected() {
+                        app.edit_todo(index);
+                    }
+                }
+                KeyCode::Char('a') => app.add_todo(),
                 KeyCode::Char('d') => {
                     if let Some(index) = app.todo_table.state.selected() {
-                        app.open_confirm_delete_todo(index)
+                        app.confirm_delete_todo(index)
                     };
                 }
                 _ => {}
@@ -54,12 +50,16 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
             ActivePanel::Projects => match code {
                 KeyCode::Char('j') => app.projects.select_next(),
                 KeyCode::Char('k') => app.projects.select_previous(),
-                KeyCode::Enter => app.open_project_popup(app.projects.state.selected()),
-                KeyCode::Char('a') => app.open_project_popup(None),
-                KeyCode::Char('d') => {
-                    if let Some(index) = app.todo_table.state.selected() {
-                        app.open_confirm_delete_project(index)
+                KeyCode::Enter => {
+                    if let Some(index) = app.projects.state.selected() {
+                        app.edit_project(index);
                     }
+                }
+                KeyCode::Char('a') => app.add_project(),
+                KeyCode::Char('d') => {
+                    if let Some(index) = app.projects.state.selected() {
+                        app.confirm_delete_project(index)
+                    };
                 }
                 _ => {}
             },
@@ -74,10 +74,29 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
  */
 fn update_edit(app: &mut App, key_event: KeyEvent) {
     if key_event.code == KeyCode::Esc {
-        app.dialog = None;
+        app.close_dialog();
         return;
     }
 
+    let Some(dialog) = app.dialog.take() else {
+        return;
+    };
+
+    app.dialog = match dialog {
+        Dialog::Todo(popup) => update_todo(app, popup, key_event).map(Dialog::Todo),
+        Dialog::Project(popup) => update_project(app, popup, key_event).map(Dialog::Project),
+        Dialog::Confirm(popup) => update_confirm(app, popup, key_event).map(Dialog::Confirm),
+    };
+
+    /*
+    match dialog {
+        Dialog::Todo(popup) => match popup.mode {
+            TodoPopupMode::Create => app.create_todo(popup.into_new_todo()),
+            TodoPopupMode::Edit(todo_id) => app.update_todo(todo_id),
+        },
+        Dialog::Project(popup) => {}
+        Dialog::Confirm(popup) => {}
+    }
     let action = match app.dialog.as_mut().unwrap() {
         Dialog::Todo(popup) => update_todo(popup, key_event),
         Dialog::Project(popup) => update_project(popup, key_event),
@@ -86,15 +105,19 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
     };
 
     match action {
-        DialogAction::SubmitTodo => match app.submit_todo() {
-            Ok(()) => {
-                app.dialog = None;
-                app.error_message = None;
+        DialogAction::SubmitTodo => {
+            if let Some(index) = app.todo_table.state.selected() {
+                match app.submit_todo() {
+                    Ok(()) => {
+                        app.dialog = None;
+                        app.error_message = None;
+                    }
+                    Err(err) => {
+                        app.error_message = Some(err.to_string());
+                    }
+                }
             }
-            Err(err) => {
-                app.error_message = Some(err.to_string());
-            }
-        },
+        }
         DialogAction::SubmitProject => match app.submit_project() {
             Ok(()) => {
                 app.dialog = None;
@@ -129,184 +152,159 @@ fn update_edit(app: &mut App, key_event: KeyEvent) {
         }
         DialogAction::None => {}
     }
+    */
 }
 
-fn update_confirm(popup: &ConfirmPopup, key_event: KeyEvent) -> DialogAction {
+fn update_confirm(app: &mut App, popup: ConfirmPopup, key_event: KeyEvent) -> Option<ConfirmPopup> {
     match key_event.code {
-        KeyCode::Char('y') => DialogAction::Confirm(popup.action.clone()),
-        KeyCode::Char('n') | KeyCode::Esc => DialogAction::Close,
-        _ => DialogAction::None,
+        KeyCode::Char('y') => match popup.action {
+            ConfirmAction::DeleteTodo(todo_id) => match app.delete_todo(todo_id) {
+                Ok(()) => {
+                    app.error_message = None;
+                    return None;
+                }
+                Err(err) => app.error_message = Some(err.to_string()),
+            },
+            ConfirmAction::DeleteProject(project_id) => match app.delete_project(project_id) {
+                Ok(()) => {
+                    app.error_message = None;
+                    return None;
+                }
+                Err(err) => app.error_message = Some(err.to_string()),
+            },
+        },
+        KeyCode::Char('n') | KeyCode::Esc => app.close_dialog(),
+        _ => {}
     }
+    Some(popup)
 }
 
-fn update_todo_enter(popup: &mut TodoPopup) -> DialogAction {
-    match popup.focus {
-        Focus::DueDate => {
-            popup.due_date = Some(popup.calendar_date);
-            popup.focus_next();
-            DialogAction::None
-        }
-        _ => DialogAction::SubmitTodo,
-    }
-}
-
-fn update_todo_space(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => {}
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_left(popup: &mut TodoPopup) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.cursor_left(),
-        Focus::Info => popup.info.cursor_left(),
-        Focus::Status => popup.status = popup.status.previous(),
-        Focus::DueDate => {}
-        Focus::Project => popup.project.cursor_left(),
-    }
-    DialogAction::None
-}
-
-fn update_todo_right(popup: &mut TodoPopup) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.cursor_right(),
-        Focus::Info => popup.info.cursor_right(),
-        Focus::Status => popup.status = popup.status.next(),
-        Focus::DueDate => {}
-        Focus::Project => popup.project.cursor_right(),
-    }
-    DialogAction::None
-}
-
-fn update_todo_p(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => popup.calendar_date = calendar::prev_month(popup.calendar_date),
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_n(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => popup.calendar_date = calendar::next_month(popup.calendar_date),
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_j(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => popup.calendar_date = calendar::move_down(popup.calendar_date),
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_k(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => popup.calendar_date = calendar::move_up(popup.calendar_date),
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_h(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => popup.calendar_date = calendar::move_left(popup.calendar_date),
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_l(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => popup.calendar_date = calendar::move_right(popup.calendar_date),
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo_other(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
-    match popup.focus {
-        Focus::Todo => popup.todo.on_key_press(key_event),
-        Focus::Info => popup.info.on_key_press(key_event),
-        Focus::Status => {}
-        Focus::DueDate => {}
-        Focus::Project => popup.project.on_key_press(key_event),
-    }
-    DialogAction::None
-}
-
-fn update_todo(popup: &mut TodoPopup, key_event: KeyEvent) -> DialogAction {
+fn update_todo(app: &mut App, mut popup: TodoPopup, key_event: KeyEvent) -> Option<TodoPopup> {
     match key_event.code {
         // Tab changes focus
         KeyCode::Tab => {
-            if key_event.modifiers == KeyModifiers::SHIFT {
+            if key_event.modifiers.contains(KeyModifiers::SHIFT) {
                 popup.focus_previous();
             } else {
                 popup.focus_next();
             }
-            DialogAction::None
         }
-        KeyCode::Enter => update_todo_enter(popup),
-        KeyCode::Char(' ') => update_todo_space(popup, key_event),
-        KeyCode::Left => update_todo_left(popup),
-        KeyCode::Right => update_todo_right(popup),
-        KeyCode::Char('p') => update_todo_p(popup, key_event),
-        KeyCode::Char('n') => update_todo_n(popup, key_event),
-        KeyCode::Char('j') => update_todo_j(popup, key_event),
-        KeyCode::Char('k') => update_todo_k(popup, key_event),
-        KeyCode::Char('h') => update_todo_h(popup, key_event),
-        KeyCode::Char('l') => update_todo_l(popup, key_event),
-        _ => update_todo_other(popup, key_event),
+        KeyCode::Enter => match popup.focus {
+            Focus::DueDate => {
+                popup.due_date = Some(popup.calendar_date);
+                popup.focus_next();
+            }
+            _ => {
+                match popup.mode {
+                    TodoPopupMode::Create => match app.create_todo(popup.into_new_todo()) {
+                        Ok(()) => {
+                            app.error_message = None;
+                            return None;
+                        }
+                        Err(err) => app.error_message = Some(err.to_string()),
+                    },
+                    TodoPopupMode::Edit(todo_id) => {
+                        match app.update_todo(todo_id, popup.into_form_data()) {
+                            Ok(()) => {
+                                app.error_message = None;
+                                return None;
+                            }
+                            Err(err) => app.error_message = Some(err.to_string()),
+                        }
+                    }
+                };
+            }
+        },
+        other_key => match popup.focus {
+            Focus::Todo => match other_key {
+                KeyCode::Left => popup.todo.cursor_left(),
+                KeyCode::Right => popup.todo.cursor_right(),
+                _ => popup.todo.on_key_press(key_event),
+            },
+            Focus::Info => match other_key {
+                KeyCode::Left => popup.info.cursor_left(),
+                KeyCode::Right => popup.info.cursor_right(),
+                _ => popup.info.on_key_press(key_event),
+            },
+            Focus::Status => match other_key {
+                KeyCode::Char('j') => popup.status = popup.status.next(),
+                KeyCode::Char('k') => popup.status = popup.status.previous(),
+                _ => {}
+            },
+            Focus::DueDate => match other_key {
+                KeyCode::Char('p') => {
+                    popup.calendar_date = calendar::prev_month(popup.calendar_date)
+                }
+                KeyCode::Char('n') => {
+                    popup.calendar_date = calendar::next_month(popup.calendar_date)
+                }
+                KeyCode::Char('j') => {
+                    popup.calendar_date = calendar::move_down(popup.calendar_date)
+                }
+                KeyCode::Char('k') => popup.calendar_date = calendar::move_up(popup.calendar_date),
+                KeyCode::Char('h') => {
+                    popup.calendar_date = calendar::move_left(popup.calendar_date)
+                }
+                KeyCode::Char('l') => {
+                    popup.calendar_date = calendar::move_right(popup.calendar_date)
+                }
+                _ => {}
+            },
+            Focus::Project => match other_key {
+                KeyCode::Left => popup.project.cursor_left(),
+                KeyCode::Right => popup.project.cursor_right(),
+                _ => popup.project.on_key_press(key_event),
+            },
+        },
     }
+    Some(popup)
 }
 
-fn update_project(popup: &mut ProjectPopup, key_event: KeyEvent) -> DialogAction {
+fn update_project(
+    app: &mut App,
+    mut popup: ProjectPopup,
+    key_event: KeyEvent,
+) -> Option<ProjectPopup> {
     // Enter submits the form
     match key_event.code {
-        KeyCode::Enter => DialogAction::SubmitProject,
+        KeyCode::Esc => app.close_dialog(),
+        KeyCode::Enter => {
+            match popup.mode {
+                ProjectPopupMode::Create => match app.create_project(popup.into_new_project()) {
+                    Ok(()) => {
+                        app.error_message = None;
+                        return None;
+                    }
+                    Err(err) => app.error_message = Some(err.to_string()),
+                },
+                ProjectPopupMode::Edit(project_id) => {
+                    match app.update_project(project_id, popup.into_form_data()) {
+                        Ok(()) => {
+                            app.error_message = None;
+                            return None;
+                        }
+                        Err(err) => app.error_message = Some(err.to_string()),
+                    }
+                }
+            };
+        }
         KeyCode::Left => {
             popup.name.cursor_left();
-            DialogAction::None
         }
         KeyCode::Right => {
             popup.name.cursor_right();
-            DialogAction::None
         }
         _ => {
             popup.name.on_key_press(key_event);
-            DialogAction::None
         }
     }
+    Some(popup)
 }
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
-    match &app.dialog {
-        None => update_normal(app, key_event),
-        Some(_) => update_edit(app, key_event),
+    if app.dialog.is_some() {
+        update_edit(app, key_event);
+    } else {
+        update_normal(app, key_event);
     }
 }

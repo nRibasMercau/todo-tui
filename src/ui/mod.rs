@@ -5,7 +5,7 @@ pub mod footer;
 pub mod project_list;
 pub mod project_popup;
 pub mod styles;
-pub mod todo_list;
+//pub mod todo_list;
 pub mod todo_popup;
 pub mod todo_table;
 use crate::app::{ActivePanel, App, Dialog};
@@ -56,7 +56,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     "Y confirm      N/Esc cancel".to_string(),
                 )
             }
-            _ => {}
         }
     } else {
         match app.active_panel {

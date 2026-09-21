@@ -1,6 +1,6 @@
 use super::calendar;
-use crate::models::todo::Status;
-use crate::models::todo::{NewTodo, Todo};
+use crate::models::todo::{NewTodo, Todo, TodoFormData};
+use crate::models::todo::{Status, TodoId};
 use crate::ui::fields::StringField;
 use chrono::{Local, NaiveDate};
 use ratatui::{
@@ -138,7 +138,14 @@ pub enum Focus {
 }
 
 #[derive(Debug)]
+pub enum TodoPopupMode {
+    Create,
+    Edit(TodoId),
+}
+
+#[derive(Debug)]
 pub struct TodoPopup {
+    pub mode: TodoPopupMode,
     pub id: Option<i64>,
     pub todo: StringField,
     pub info: StringField,
@@ -153,6 +160,7 @@ pub struct TodoPopup {
 impl TodoPopup {
     pub fn new() -> Self {
         Self {
+            mode: TodoPopupMode::Create,
             id: None,
             todo: StringField::blank("To do"),
             info: StringField::blank("Description"),
@@ -176,6 +184,7 @@ impl TodoPopup {
          */
 
         Self {
+            mode: TodoPopupMode::Edit(todo.id),
             id: Some(todo.id),
             todo: StringField::new("To do", todo.todo.clone()),
             info: StringField::new("Description", todo.info.clone()),
@@ -190,8 +199,18 @@ impl TodoPopup {
         }
     }
 
-    pub fn into_new_todo(self) -> NewTodo {
+    pub fn into_new_todo(&self) -> NewTodo {
         NewTodo {
+            todo: self.todo.stringfield_to_string(),
+            info: self.info.stringfield_to_string(),
+            status: self.status,
+            project: (!self.project.value.is_empty()).then(|| self.project.stringfield_to_string()),
+            due_date: self.due_date,
+        }
+    }
+
+    pub fn into_form_data(&self) -> TodoFormData {
+        TodoFormData {
             todo: self.todo.stringfield_to_string(),
             info: self.info.stringfield_to_string(),
             status: self.status,

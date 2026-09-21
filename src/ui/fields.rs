@@ -31,8 +31,8 @@ impl StringField {
         }
     }
 
-    pub fn stringfield_to_string(self) -> String {
-        self.value
+    pub fn stringfield_to_string(&self) -> String {
+        self.value.clone()
     }
 
     /// Handle input events for string input

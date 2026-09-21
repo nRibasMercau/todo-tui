@@ -18,6 +18,13 @@ pub struct NewProject {
     pub name: String,
 }
 
+// Info for updating an existing project
+#[derive(Debug)]
+pub struct ProjectFormData {
+    pub name: String,
+    pub archived: bool,
+}
+
 impl NewProject {
     pub fn new(name: String) -> Self {
         Self { name }
