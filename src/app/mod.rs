@@ -489,6 +489,47 @@ mod tests {
     }
 
     #[test]
+    fn updating_todo_updates_todo() -> Result<()> {
+        let conn = test_db(true)?;
+        let mut app = App::new(conn)?;
+
+        app.create_todo(NewTodo {
+            todo: String::from("My todo"),
+            info: String::from("My todo info"),
+            status: Status::ToDo,
+            project: Some(String::from("My project")),
+            due_date: None,
+        })?;
+
+        let todo_id = app.todo_table.items[0].id;
+
+        app.update_todo(
+            todo_id,
+            TodoFormData {
+                todo: String::from("Updated todo"),
+                info: String::from("Updated info"),
+                status: Status::InProgress,
+                project: Some(String::from("My project")),
+                due_date: None,
+            },
+        )?;
+
+        let todo = app
+            .todo_table
+            .items
+            .iter()
+            .find(|todo| todo.id == todo_id)
+            .expect("todo should exist");
+
+        assert_eq!(todo.todo, "Updated todo");
+        assert_eq!(todo.info, "Updated info");
+        assert_eq!(todo.status, Status::InProgress);
+        assert_eq!(todo.project_id, Some(1));
+
+        Ok(())
+    }
+
+    #[test]
     fn submitting_project_creates_project() -> Result<()> {
         let conn = test_db(true)?;
         let mut app = App::new(conn)?;
