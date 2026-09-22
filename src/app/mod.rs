@@ -4,10 +4,10 @@ pub mod todo_table;
 pub use project_list::ProjectList;
 pub use todo_table::TodoTable;
 
+use crate::app::project_list::ProjectListItem;
 use crate::models::todo::TodoFormData;
 use crate::ui::confirm_popup::{ConfirmAction, ConfirmChoice, ConfirmPopup};
 use crate::ui::project_popup::ProjectPopup;
-use crate::ui::todo_popup::Focus::Todo;
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
     db::{project, todo},
@@ -26,6 +26,7 @@ pub struct App {
     pub active_panel: ActivePanel,
     pub todo_table: TodoTable,
     pub projects: ProjectList,
+    pub todo_filter: TodoFilter,
     pub dialog: Option<Dialog>,
     pub error_message: Option<String>,
 }
@@ -34,6 +35,11 @@ pub struct App {
 pub enum ActivePanel {
     Todos,
     Projects,
+}
+
+#[derive(Debug, Default)]
+pub struct TodoFilter {
+    pub project_id: Option<i64>,
 }
 
 #[derive(Debug)]
@@ -46,15 +52,18 @@ pub enum Dialog {
 impl App {
     /// Constructs a new instance of [`App`].
     pub fn new(conn: Connection) -> rusqlite::Result<Self> {
-        let todos = todo::get(&conn)?;
+        let todo_filter = TodoFilter::default();
+        let todos = todo::get(&conn, &todo_filter)?;
         let projects = project::get(&conn)?;
-        tracing::info!(count = todos.len(), "fetched todos");
-        tracing::info!(count = projects.len(), "fetched projects");
+        let project_items = std::iter::once(ProjectListItem::All)
+            .chain(projects.into_iter().map(ProjectListItem::Project))
+            .collect();
         Ok(Self {
             conn,
             should_quit: false,
             active_panel: ActivePanel::Todos,
-            projects: ProjectList::new(projects),
+            projects: ProjectList::new(project_items),
+            todo_filter: todo_filter,
             dialog: None,
             error_message: None,
             todo_table: TodoTable::new(todos),
@@ -83,7 +92,7 @@ impl App {
 
         todo::update_status(&mut self.conn, current_todo.id, new_status, completed_at)?;
 
-        let todos = todo::get(&mut self.conn)?;
+        let todos = todo::get(&mut self.conn, &self.todo_filter)?;
         self.todo_table = TodoTable::new(todos);
 
         self.active_panel = ActivePanel::Todos;
@@ -95,32 +104,7 @@ impl App {
         // Delete db record
         todo::delete(&self.conn, todo_id)?;
 
-        // Find index of the deleted todo in the current list
-        // before removing it
-        let i = self
-            .todo_table
-            .items
-            .iter()
-            .position(|todo| todo.id == todo_id)
-            .unwrap_or(0);
-
-        // Remove item from the list
-        self.todo_table.items.retain(|todo| todo.id != todo_id);
-
-        // Handle selection status
-        // If there are no todos, select is None
-        if self.todo_table.items.is_empty() {
-            self.todo_table.state.select(None);
-            // If the deleted todo was the last one in the list,
-            // select the new last one
-        } else if i >= self.todo_table.items.len() {
-            self.todo_table
-                .state
-                .select(Some(self.todo_table.items.len() - 1));
-        // Otherwise, select the new i
-        } else {
-            self.todo_table.state.select(Some(i));
-        }
+        self.reload_todos()?;
 
         Ok(())
     }
@@ -129,39 +113,16 @@ impl App {
         // Delete db record
         project::delete(&self.conn, project_id)?;
 
-        // Find index of the deleted project in the current list
-        // before removing it
-        let i = self
-            .projects
-            .items
-            .iter()
-            .position(|project| project.id == project_id)
-            .unwrap_or(0);
+        // Reload project list
+        self.reload_projects()?;
 
-        // Remove project from the list
-        self.projects
-            .items
-            .retain(|project| project.id != project_id);
+        // State of the project list: All selected
+        // Filter: all
+        self.projects.state.select(Some(0));
+        self.todo_filter.project_id = None;
 
-        // Remove todos from the todo list
-        self.todo_table
-            .items
-            .retain(|todo| todo.project_id != Some(project_id));
-
-        // Handle selection status
-        // If there are no todos, select is None
-        if self.projects.items.is_empty() {
-            self.projects.state.select(None);
-            // If the deleted todo was the last one in the list,
-            // select the new last one
-        } else if i >= self.projects.items.len() {
-            self.projects
-                .state
-                .select(Some(self.projects.items.len() - 1));
-        // Otherwise, select the new i
-        } else {
-            self.projects.state.select(Some(i));
-        }
+        // Reload todos
+        self.reload_todos()?;
 
         Ok(())
     }
@@ -201,7 +162,7 @@ impl App {
 
     /// Opens dialog for editing existing project
     pub fn edit_project(&mut self, index: usize) {
-        let Some(project) = self.projects.items.get(index) else {
+        let Some(ProjectListItem::Project(project)) = self.projects.items.get(index) else {
             return;
         };
 
@@ -210,7 +171,7 @@ impl App {
 
     /// Opens dialog for confirming deletion of project
     pub fn confirm_delete_project(&mut self, index: usize) {
-        let Some(project) = self.projects.items.get(index) else {
+        let Some(ProjectListItem::Project(project)) = self.projects.items.get(index) else {
             return;
         };
 
@@ -227,7 +188,6 @@ impl App {
     }
 
     pub fn create_todo(&mut self, todo: NewTodo) -> rusqlite::Result<()> {
-        let mut new_project: Option<Project> = None;
         // Resolve project name
         // If the project exists, get the id
         // TODO: If the project doesn't exists, ask user
@@ -244,8 +204,6 @@ impl App {
                     )?;
                     let project_id = project.id;
 
-                    new_project = Some(project);
-
                     Some(project_id)
                 }
             },
@@ -260,24 +218,16 @@ impl App {
             due_date: todo.due_date,
             completed_at: None,
         };
-        let created_todo = todo::create(&mut self.conn, &todo)?;
-        // Add todo to the list
-        self.todo_table.add_todo(created_todo);
-        // Add new project to the list, only if a new project was created
-        if let Some(project) = new_project {
-            self.projects.add_project(project);
-        }
+        todo::create(&mut self.conn, &todo)?;
 
-        // Refresh todos list
-        let todos = todo::get(&self.conn)?;
-        self.todo_table = TodoTable::new(todos);
+        self.reload_todos()?;
+        self.reload_projects()?;
 
         self.active_panel = ActivePanel::Todos;
         Ok(())
     }
 
     pub fn update_todo(&mut self, todo_id: TodoId, new_todo: TodoFormData) -> rusqlite::Result<()> {
-        let mut new_project: Option<Project> = None;
         // Resolve project name
         // If the project exists, get the id
         // TODO: If the project doesn't exists, ask user
@@ -293,8 +243,6 @@ impl App {
                         },
                     )?;
                     let project_id = project.id;
-
-                    new_project = Some(project);
 
                     Some(project_id)
                 }
@@ -321,23 +269,10 @@ impl App {
             created_at: current_todo.created_at,
             completed_at,
         };
-        let todo = todo::update(&mut self.conn, &todo)?;
-        match self.todo_table.replace_todo(todo) {
-            Ok(()) => {}
-            Err(err) => {
-                eprintln!("replace todo failed: {err:?}");
-                eprintln!("table: {:?}", self.todo_table.items);
-            }
-        }
+        todo::update(&mut self.conn, &todo)?;
 
-        // Add new project to the list, only if a new project was created
-        if let Some(project) = new_project {
-            self.projects.add_project(project);
-        }
-
-        // Table refresh
-        let todos = todo::get(&self.conn)?;
-        self.todo_table = TodoTable::new(todos);
+        self.reload_todos()?;
+        self.reload_projects()?;
 
         self.active_panel = ActivePanel::Todos;
 
@@ -345,8 +280,8 @@ impl App {
     }
 
     pub fn create_project(&mut self, new_project: NewProject) -> rusqlite::Result<()> {
-        let project = project::create(&mut self.conn, new_project)?;
-        self.projects.add_project(project);
+        project::create(&mut self.conn, new_project)?;
+        self.reload_projects()?;
         Ok(())
     }
 
@@ -356,7 +291,7 @@ impl App {
         new_project: ProjectFormData,
     ) -> rusqlite::Result<()> {
         let current_project = project::get_by_id(&mut self.conn, project_id)?;
-        let project = project::update(
+        project::update(
             &mut self.conn,
             Project {
                 id: project_id,
@@ -365,19 +300,43 @@ impl App {
                 created_at: current_project.created_at,
             },
         )?;
-        self.projects
-            .replace_project(project)
-            .expect("Internal error: updated must exist in ProjectList");
-
+        self.reload_projects()?;
         Ok(())
     }
 
-    pub fn find_project_id(&self, project_name: &str) -> Option<i64> {
-        self.projects
-            .items
-            .iter()
-            .find(|p| p.name == project_name)
-            .map(|p| p.id)
+    pub fn reload_projects(&mut self) -> rusqlite::Result<()> {
+        let projects = project::get(&self.conn)?;
+        self.projects.replace_projects(projects);
+        Ok(())
+    }
+
+    pub fn reload_todos(&mut self) -> rusqlite::Result<()> {
+        let selected_id = self.todo_table.selected_todo_id();
+
+        let todos = todo::get(&self.conn, &self.todo_filter)?;
+        self.todo_table.items = todos;
+
+        let index = selected_id
+            .and_then(|id| self.todo_table.items.iter().position(|todo| todo.id == id))
+            .or_else(|| {
+                if self.todo_table.items.is_empty() {
+                    None
+                } else {
+                    Some(0)
+                }
+            });
+
+        self.todo_table.state.select(index);
+        Ok(())
+    }
+
+    pub fn select_project(&mut self, project_id: Option<ProjectId>) -> rusqlite::Result<()> {
+        self.todo_filter.project_id = project_id;
+
+        let todos = todo::get(&self.conn, &self.todo_filter)?;
+        self.todo_table.items = todos;
+
+        Ok(())
     }
 }
 
@@ -392,6 +351,26 @@ mod tests {
     fn test_db() -> Result<Connection> {
         let mut conn = Connection::open_in_memory()?;
         migrate(&mut conn)?;
+        conn.execute_batch(
+            "
+            INSERT INTO projects (id, name, archived) VALUES (1, 'Project 1', 0);
+            INSERT INTO projects (id, name, archived) VALUES (2, 'Project 2', 0);
+            INSERT INTO projects (id, name, archived) VALUES (3, 'Project 3', 0);
+        ",
+        )?;
+        conn.execute_batch("
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (1,   'Todo 1',   'todo 1',     'todo',           1,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (2,   'Todo 2',   'todo 2',     'in_progress',    1,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (3,   'Todo 3',   'todo 3',     'in_progress',    2,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (4,   'Todo 4',   'todo 4',     'todo',           2,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (5,   'Todo 5',   'todo 5',     'done',           2,     NULL,            '2026-05-01');
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (6,   'Todo 6',   'todo 6',     'todo',           3,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (7,   'Todo 7',   'todo 7',     'in_progress',    3,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (8,   'Todo 8',   'todo 8',     'in_progress',    3,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (9,   'Todo 9',   'todo 9',     'todo',           3,     NULL,            NULL);
+            INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (10,  'Todo 10',  'todo 10',     'done',          3,     '2026-07-01',    '2026-08-01');
+        ")?;
+
         Ok(conn)
     }
 
@@ -425,6 +404,56 @@ mod tests {
         );
 
         assert!(matches!(app.dialog, Some(Dialog::Todo(_))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn pressing_enter_in_todos_opens_todo_popup() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        app.active_panel = ActivePanel::Todos;
+        app.todo_table.state.select(Some(1));
+
+        update(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(matches!(app.dialog, Some(Dialog::Todo(_))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn pressing_enter_in_projects_opens_project_popup() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        app.active_panel = ActivePanel::Projects;
+        app.projects.state.select(Some(1));
+
+        update(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(matches!(app.dialog, Some(Dialog::Project(_))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn selecting_a_project_filters_todos() -> Result<()> {
+        let conn = test_db()?;
+        let mut app = App::new(conn)?;
+
+        app.select_project(Some(1))?;
+        assert_eq!(app.todo_filter.project_id, Some(1));
+        let mut actual: Vec<_> = app.todo_table.items.iter().map(|todo| todo.id).collect();
+        actual.sort();
+        assert_eq!(actual, vec![1, 2]);
+
+        app.select_project(Some(3))?;
+        assert_eq!(app.todo_filter.project_id, Some(3));
+        actual = app.todo_table.items.iter().map(|todo| todo.id).collect();
+        actual.sort();
+        assert_eq!(actual, vec![6, 7, 8, 9, 10]);
 
         Ok(())
     }

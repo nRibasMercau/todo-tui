@@ -1,4 +1,7 @@
-use crate::models::todo::{NewTodoRecord, Status, Todo, TodoRecord};
+use crate::{
+    app::TodoFilter,
+    models::todo::{NewTodoRecord, Status, Todo, TodoRecord},
+};
 use chrono::NaiveDate;
 use rusqlite::{Connection, Result, params};
 
@@ -32,18 +35,24 @@ pub fn create(conn: &mut Connection, todo: &NewTodoRecord) -> Result<Todo> {
 }
 
 /// Gets todos.
-pub fn get(conn: &Connection) -> Result<Vec<Todo>> {
+pub fn get(conn: &Connection, filters: &TodoFilter) -> Result<Vec<Todo>> {
+    let mut conditions = Vec::new();
+    if filters.project_id.is_some() {
+        conditions.push("")
+    }
+
     let mut stmt = conn.prepare(
         "
             SELECT t.id, t.todo, t.info, t.status, t.project_id, p.name as project, t.due_date, t.created_at, t.completed_at
             FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
+            WHERE (?1 is NULL OR t.project_id = ?1)
             ORDER BY
             CASE WHEN status = 'in_progress' THEN 1 WHEN status = 'todo' THEN 2 ELSE 3 END asc,
-            due_date asc
-        ",
+            CASE WHEN due_date IS NULL THEN '9999-12-31' ELSE due_date END asc
+        "
     )?;
     let todos = stmt
-        .query_map([], |row| {
+        .query_map([filters.project_id], |row| {
             Ok(Todo {
                 id: row.get("id")?,
                 todo: row.get("todo")?,
@@ -170,7 +179,8 @@ mod tests {
 
         assert_eq!(todo.todo, "My todo");
 
-        let todos = get(&conn)?;
+        let todo_filter = TodoFilter::default();
+        let todos = get(&conn, &todo_filter)?;
 
         assert_eq!(todos.len(), 1);
         assert_eq!(todos[0].id, todo.id);
@@ -198,11 +208,12 @@ mod tests {
         };
 
         let todo = create(&mut conn, &new_todo)?;
-        let todos = get(&conn)?;
+        let todo_filter = TodoFilter::default();
+        let todos = get(&conn, &todo_filter)?;
         assert_eq!(todos.len(), 1);
 
         delete(&mut conn, todo.id)?;
-        let todos = get(&conn)?;
+        let todos = get(&conn, &todo_filter)?;
         assert!(todos.is_empty());
 
         Ok(())
@@ -217,7 +228,7 @@ mod tests {
             status: Status::ToDo,
             info: String::from("This is a test todo 1"),
             project_id: None,
-            due_date: None,
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
             completed_at: None,
         };
 
@@ -226,14 +237,15 @@ mod tests {
             status: Status::ToDo,
             info: String::from("This is a test todo 2"),
             project_id: None,
-            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            due_date: None,
             completed_at: None,
         };
 
         create(&mut conn, &todo_1)?;
         create(&mut conn, &todo_2)?;
 
-        let todos = get(&conn)?;
+        let todo_filter = TodoFilter::default();
+        let todos = get(&conn, &todo_filter)?;
 
         assert_eq!(todos.len(), 2);
         assert_eq!(todos[0].todo, todo_1.todo);
@@ -392,6 +404,141 @@ mod tests {
             NaiveDate::from_ymd_opt(2026, 9, 18)
         );
         assert_eq!(updated_todo.due_date, todo.due_date);
+
+        Ok(())
+    }
+
+    #[test]
+    fn gets_todos_without_project_filter_returns_all() -> Result<()> {
+        let mut conn = test_db()?;
+
+        conn.execute(
+            "
+            INSERT INTO projects (id, name, archived, created_at)
+            VALUES (1, 'Project 1', 0, '2026-01.01')
+            ",
+            [],
+        )?;
+        conn.execute(
+            "
+            INSERT INTO projects (id, name, archived, created_at)
+            VALUES (2, 'Project 2', 0, '2026-01.01')
+            ",
+            [],
+        )?;
+
+        let todo_1 = NewTodoRecord {
+            todo: String::from("Project 1 task 1"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 1"),
+            project_id: Some(1),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+
+        let todo_2 = NewTodoRecord {
+            todo: String::from("Project 1 task 2"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 2"),
+            project_id: Some(1),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+
+        let todo_3 = NewTodoRecord {
+            todo: String::from("Project 2 task 3"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 3"),
+            project_id: Some(2),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+
+        let todo_4 = NewTodoRecord {
+            todo: String::from("Project 2 task 4"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 4"),
+            project_id: Some(2),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+        create(&mut conn, &todo_1)?;
+        create(&mut conn, &todo_2)?;
+        create(&mut conn, &todo_3)?;
+        create(&mut conn, &todo_4)?;
+
+        let todo_filter = TodoFilter::default();
+        let todos = get(&mut conn, &todo_filter)?;
+        assert_eq!(todos.len(), 4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn gets_todos_with_project_filter_returns_project_todos() -> Result<()> {
+        let mut conn = test_db()?;
+
+        conn.execute(
+            "
+            INSERT INTO projects (id, name, archived, created_at)
+            VALUES (1, 'Project 1', 0, '2026-01.01')
+            ",
+            [],
+        )?;
+        conn.execute(
+            "
+            INSERT INTO projects (id, name, archived, created_at)
+            VALUES (2, 'Project 2', 0, '2026-01.01')
+            ",
+            [],
+        )?;
+
+        let todo_1 = NewTodoRecord {
+            todo: String::from("Project 1 task 1"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 1"),
+            project_id: Some(1),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+
+        let todo_2 = NewTodoRecord {
+            todo: String::from("Project 1 task 2"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 2"),
+            project_id: Some(1),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+
+        let todo_3 = NewTodoRecord {
+            todo: String::from("Project 2 task 3"),
+            status: Status::ToDo,
+            info: String::from("This is a test todo 3"),
+            project_id: Some(2),
+            due_date: NaiveDate::from_ymd_opt(2026, 12, 31),
+            completed_at: None,
+        };
+
+        create(&mut conn, &todo_1)?;
+        create(&mut conn, &todo_2)?;
+        create(&mut conn, &todo_3)?;
+
+        let todos = get(
+            &mut conn,
+            &TodoFilter {
+                project_id: Some(1),
+            },
+        )?;
+        assert_eq!(todos.len(), 2);
+
+        let todos = get(
+            &mut conn,
+            &TodoFilter {
+                project_id: Some(2),
+            },
+        )?;
+        assert_eq!(todos.len(), 1);
 
         Ok(())
     }

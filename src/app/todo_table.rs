@@ -1,4 +1,4 @@
-use crate::models::todo::Todo;
+use crate::models::todo::{Todo, TodoId};
 use ratatui::widgets::TableState;
 
 #[derive(Debug)]
@@ -59,13 +59,10 @@ impl TodoTable {
         self.items.push(todo);
     }
 
-    pub fn replace_todo(&mut self, todo_item: Todo) -> Result<(), TodoTableError> {
-        match self.items.iter_mut().find(|i| i.id == todo_item.id) {
-            Some(item) => {
-                *item = todo_item;
-                Ok(())
-            }
-            None => Err(TodoTableError::TodoNotFound),
+    pub fn selected_todo_id(&self) -> Option<TodoId> {
+        match self.items.get(self.state.selected().unwrap_or(0)) {
+            Some(todo) => Some(todo.id),
+            None => None,
         }
     }
 }

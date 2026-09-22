@@ -64,8 +64,22 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                 _ => {}
             },
             ActivePanel::Projects => match code {
-                KeyCode::Char('j') => app.projects.select_next(),
-                KeyCode::Char('k') => app.projects.select_previous(),
+                KeyCode::Char('j') => {
+                    app.projects.select_next();
+                    let project_id = app.projects.selected_project_id();
+                    match app.select_project(project_id) {
+                        Ok(()) => {}
+                        Err(err) => app.error_message = Some(err.to_string()),
+                    }
+                }
+                KeyCode::Char('k') => {
+                    app.projects.select_previous();
+                    let project_id = app.projects.selected_project_id();
+                    match app.select_project(project_id) {
+                        Ok(()) => {}
+                        Err(err) => app.error_message = Some(err.to_string()),
+                    }
+                }
                 KeyCode::Enter => {
                     if let Some(index) = app.projects.state.selected() {
                         app.edit_project(index);

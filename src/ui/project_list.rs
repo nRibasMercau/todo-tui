@@ -1,3 +1,4 @@
+use crate::app::project_list::ProjectListItem;
 use crate::app::{ActivePanel, App};
 use crate::ui::styles::{ACTIVE, INACTIVE};
 use ratatui::Frame;
@@ -12,11 +13,10 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     let active = app.active_panel == ActivePanel::Projects;
     let style = if active { ACTIVE } else { INACTIVE };
 
-    let projects = app
-        .projects
-        .items
-        .iter()
-        .map(|project| ListItem::new(Line::from(format!("{}", project.name))));
+    let projects = app.projects.items.iter().map(|project| match project {
+        ProjectListItem::All => ListItem::new(Line::from("All")),
+        ProjectListItem::Project(project) => ListItem::new(Line::from(format!("{}", project.name))),
+    });
 
     let list = List::new(projects)
         .block(

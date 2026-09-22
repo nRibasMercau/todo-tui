@@ -1,9 +1,15 @@
-use crate::models::project::Project;
+use crate::models::project::{Project, ProjectId};
 use ratatui::widgets::ListState;
 
 #[derive(Debug)]
+pub enum ProjectListItem {
+    All,
+    Project(Project),
+}
+
+#[derive(Debug)]
 pub struct ProjectList {
-    pub items: Vec<Project>,
+    pub items: Vec<ProjectListItem>,
     pub state: ListState,
 }
 
@@ -13,7 +19,7 @@ pub enum ProjectListError {
 }
 
 impl ProjectList {
-    pub fn new(items: Vec<Project>) -> Self {
+    pub fn new(items: Vec<ProjectListItem>) -> Self {
         let mut state = ListState::default();
 
         if !items.is_empty() {
@@ -40,18 +46,17 @@ impl ProjectList {
             self.state.select_previous();
         }
     }
-
-    pub fn add_project(&mut self, project: Project) {
-        self.items.push(project);
+    pub fn replace_projects(&mut self, projects: Vec<Project>) {
+        self.items = std::iter::once(ProjectListItem::All)
+            .chain(projects.into_iter().map(ProjectListItem::Project))
+            .collect();
     }
 
-    pub fn replace_project(&mut self, project: Project) -> Result<(), ProjectListError> {
-        match self.items.iter_mut().find(|i| i.id == project.id) {
-            Some(item) => {
-                *item = project;
-                Ok(())
-            }
-            None => Err(ProjectListError::ProjectNotFound),
+    pub fn selected_project_id(&self) -> Option<ProjectId> {
+        match self.items.get(self.state.selected().unwrap_or(0)) {
+            Some(ProjectListItem::All) => None,
+            Some(ProjectListItem::Project(project)) => Some(project.id),
+            None => None,
         }
     }
 }
@@ -66,18 +71,18 @@ mod tests {
     #[test]
     fn project_list_select_next() -> Result<()> {
         let mut projects = ProjectList::new(vec![
-            Project {
+            ProjectListItem::Project(Project {
                 id: 1,
                 name: String::from("Project 1"),
                 archived: false,
                 created_at: Local::now().date_naive(),
-            },
-            Project {
+            }),
+            ProjectListItem::Project(Project {
                 id: 2,
                 name: String::from("Project 2"),
                 archived: false,
                 created_at: Local::now().date_naive(),
-            },
+            }),
         ]);
 
         projects.state.select(Some(0));
@@ -97,18 +102,18 @@ mod tests {
     #[test]
     fn project_list_select_previous() -> Result<()> {
         let mut projects = ProjectList::new(vec![
-            Project {
+            ProjectListItem::Project(Project {
                 id: 1,
                 name: String::from("Project 1"),
                 archived: false,
                 created_at: Local::now().date_naive(),
-            },
-            Project {
+            }),
+            ProjectListItem::Project(Project {
                 id: 2,
                 name: String::from("Project 2"),
                 archived: false,
                 created_at: Local::now().date_naive(),
-            },
+            }),
         ]);
 
         projects.state.select(Some(2));
