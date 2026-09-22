@@ -42,9 +42,12 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                 KeyCode::Char('j') => app.todo_table.select_next(),
                 KeyCode::Char('k') => app.todo_table.select_previous(),
                 KeyCode::Char(' ') => {
-                    match app.toggle_status_todo(app.todo_table.state.selected()) {
-                        Ok(()) => {}
-                        Err(err) => app.error_message = Some(err.to_string()),
+                    if let Some(index) = app.todo_table.state.selected() {
+                        let todo_id = app.todo_table.items[index].id;
+                        match app.toggle_status_todo(todo_id) {
+                            Ok(()) => {}
+                            Err(err) => app.error_message = Some(err.to_string()),
+                        }
                     }
                 }
                 KeyCode::Enter => {

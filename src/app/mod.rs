@@ -7,6 +7,7 @@ pub use todo_table::TodoTable;
 use crate::models::todo::TodoFormData;
 use crate::ui::confirm_popup::{ConfirmAction, ConfirmChoice, ConfirmPopup};
 use crate::ui::project_popup::ProjectPopup;
+use crate::ui::todo_popup::Focus::Todo;
 use crate::ui::todo_popup::TodoPopup;
 use crate::{
     db::{project, todo},
@@ -68,14 +69,8 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn toggle_status_todo(&mut self, item: Option<usize>) -> rusqlite::Result<()> {
-        let Some(index) = item else {
-            return Ok(());
-        };
-
-        let todo = &self.todo_table.items[index];
-
-        let current_todo = todo::get_by_id(&mut self.conn, todo.id)?;
+    pub fn toggle_status_todo(&mut self, todo_id: TodoId) -> rusqlite::Result<()> {
+        let current_todo = todo::get_by_id(&mut self.conn, todo_id)?;
         let new_status = current_todo.status.next();
 
         let completed_at = match (current_todo.status, new_status) {
@@ -87,14 +82,11 @@ impl App {
         };
 
         todo::update_status(&mut self.conn, current_todo.id, new_status, completed_at)?;
-        let updated_todo = todo::get_by_id(&mut self.conn, todo.id)?;
-        match self.todo_table.replace_todo(updated_todo) {
-            Ok(()) => {}
-            Err(err) => {
-                eprintln!("replace todo failed: {err:?}");
-                eprintln!("table: {:?}", self.todo_table.items);
-            }
-        }
+
+        let todos = todo::get(&mut self.conn)?;
+        self.todo_table = TodoTable::new(todos);
+
+        self.active_panel = ActivePanel::Todos;
 
         Ok(())
     }
@@ -275,6 +267,11 @@ impl App {
         if let Some(project) = new_project {
             self.projects.add_project(project);
         }
+
+        // Refresh todos list
+        let todos = todo::get(&self.conn)?;
+        self.todo_table = TodoTable::new(todos);
+
         self.active_panel = ActivePanel::Todos;
         Ok(())
     }
@@ -337,6 +334,13 @@ impl App {
         if let Some(project) = new_project {
             self.projects.add_project(project);
         }
+
+        // Table refresh
+        let todos = todo::get(&self.conn)?;
+        self.todo_table = TodoTable::new(todos);
+
+        self.active_panel = ActivePanel::Todos;
+
         Ok(())
     }
 
