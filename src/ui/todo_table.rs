@@ -7,9 +7,6 @@ use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Span;
 use ratatui::widgets::{Block, BorderType, Borders, Padding, Row, Table};
 
-pub const STATUS_TODO: Style = Style::new().fg(Color::White);
-pub const STATUS_IN_PROGRESS: Style = Style::new().fg(Color::Yellow);
-pub const STATUS_DONE: Style = Style::new().fg(Color::Green);
 pub const DONE_ICON: &str = "✓";
 pub const TODO_IN_PROGRESS_ICON: &str = "□";
 
@@ -52,8 +49,8 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     let footer = Row::new(["Todos table"]);
     let widths = [
         Constraint::Percentage(1),
-        Constraint::Percentage(15),
-        Constraint::Percentage(39),
+        Constraint::Percentage(10),
+        Constraint::Percentage(44),
         Constraint::Percentage(15),
         Constraint::Percentage(10),
         Constraint::Percentage(10),
@@ -86,11 +83,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn status_style(status: Status) -> Style {
-    match status {
-        Status::ToDo => STATUS_TODO,
-        Status::InProgress => STATUS_IN_PROGRESS,
-        Status::Done => STATUS_DONE,
-    }
+    Style::default().fg(status.color())
 }
 
 fn status_icon(status: Status) -> &'static str {

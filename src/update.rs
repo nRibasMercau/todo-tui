@@ -163,6 +163,9 @@ fn update_todo(app: &mut App, mut popup: TodoPopup, key_event: KeyEvent) -> Opti
                 popup.due_date = Some(popup.calendar_date);
                 popup.focus_next();
             }
+            Focus::Info => {
+                popup.info.input(key_event);
+            }
             _ => {
                 match popup.mode {
                     TodoPopupMode::Create => match app.create_todo(popup.into_new_todo()) {
@@ -190,11 +193,9 @@ fn update_todo(app: &mut App, mut popup: TodoPopup, key_event: KeyEvent) -> Opti
                 KeyCode::Right => popup.todo.cursor_right(),
                 _ => popup.todo.on_key_press(key_event),
             },
-            Focus::Info => match other_key {
-                KeyCode::Left => popup.info.cursor_left(),
-                KeyCode::Right => popup.info.cursor_right(),
-                _ => popup.info.on_key_press(key_event),
-            },
+            Focus::Info => {
+                popup.info.input(key_event);
+            }
             Focus::Status => match other_key {
                 KeyCode::Char('j') => popup.status = popup.status.next(),
                 KeyCode::Char('k') => popup.status = popup.status.previous(),

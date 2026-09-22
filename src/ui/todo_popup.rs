@@ -9,6 +9,7 @@ use ratatui::{
     prelude::*,
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget},
 };
+use ratatui_textarea::{CursorMove, TextArea, WrapMode};
 
 struct StringFieldWidget<'a> {
     string_field: &'a StringField,
@@ -87,6 +88,7 @@ impl Widget for StatusFieldWidget {
         value_block.render(value_area, buf);
         Paragraph::new(self.status.to_string())
             .alignment(Alignment::Left)
+            .style(Style::default().fg(self.status.color()))
             .render(value_inner, buf);
     }
 }
@@ -148,7 +150,7 @@ pub struct TodoPopup {
     pub mode: TodoPopupMode,
     pub id: Option<i64>,
     pub todo: StringField,
-    pub info: StringField,
+    pub info: TextArea<'static>,
     pub status: Status,
     pub project: StringField,
     pub due_date: Option<NaiveDate>,
@@ -157,13 +159,13 @@ pub struct TodoPopup {
     pub calendar_date: NaiveDate,
 }
 
-impl TodoPopup {
+impl<'a> TodoPopup {
     pub fn new() -> Self {
         Self {
             mode: TodoPopupMode::Create,
             id: None,
             todo: StringField::blank("To do"),
-            info: StringField::blank("Description"),
+            info: TextArea::default(),
             project: StringField::blank("Project"),
             status: Status::ToDo,
             due_date: None,
@@ -182,12 +184,15 @@ impl TodoPopup {
          *   ├── Status ───────→ copy ───→ Status
          *   └── NaiveDate ────→ copy ───→ NaiveDate
          */
+        let mut info = TextArea::from(todo.info.lines().map(String::from).collect::<Vec<String>>());
+        info.move_cursor(CursorMove::Bottom);
+        info.move_cursor(CursorMove::End);
 
         Self {
             mode: TodoPopupMode::Edit(todo.id),
             id: Some(todo.id),
             todo: StringField::new("To do", todo.todo.clone()),
-            info: StringField::new("Description", todo.info.clone()),
+            info: info,
             project: StringField::new("Project", todo.project.clone().unwrap_or_default()),
             status: todo.status,
             due_date: todo.due_date,
@@ -202,7 +207,7 @@ impl TodoPopup {
     pub fn into_new_todo(&self) -> NewTodo {
         NewTodo {
             todo: self.todo.stringfield_to_string(),
-            info: self.info.stringfield_to_string(),
+            info: self.info.lines().join("\n"),
             status: self.status,
             project: (!self.project.value.is_empty()).then(|| self.project.stringfield_to_string()),
             due_date: self.due_date,
@@ -212,7 +217,7 @@ impl TodoPopup {
     pub fn into_form_data(&self) -> TodoFormData {
         TodoFormData {
             todo: self.todo.stringfield_to_string(),
-            info: self.info.stringfield_to_string(),
+            info: self.info.lines().join("\n"),
             status: self.status,
             project: (!self.project.value.is_empty()).then(|| self.project.stringfield_to_string()),
             due_date: self.due_date,
@@ -269,41 +274,74 @@ impl TodoPopup {
         ]));
 
         // Form
+        // Todo
         let todo_widget = StringFieldWidget {
             string_field: &todo_popup.todo,
             is_focused: todo_popup.focus == Focus::Todo,
         };
-        let info_widget = StringFieldWidget {
-            string_field: &todo_popup.info,
-            is_focused: todo_popup.focus == Focus::Info,
+
+        // Info
+        let [info_label_area, info_value_area] = info_area.layout(&Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Min(3),
+        ]));
+        let info_style: Style = if todo_popup.focus == Focus::Info {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default()
         };
+        let mut info_widget = todo_popup.info.clone();
+        info_widget.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(info_style),
+        );
+        info_widget.set_wrap_mode(WrapMode::WordOrGlyph);
+        // default line style
+        info_widget.set_cursor_line_style(Style::default());
+        // if focus is not Info, hide cursor in info TextArea
+        if todo_popup.focus != Focus::Info {
+            info_widget.set_cursor_style(Style::default());
+        }
+
+        // Status
         let status_widget = StatusFieldWidget {
             status: todo_popup.status,
             is_focused: todo_popup.focus == Focus::Status,
         };
+
+        // Due date
         let due_date_widget = DueDateFieldWidget {
             due_date: todo_popup.due_date,
             is_focused: todo_popup.focus == Focus::DueDate,
         };
+
+        // Project
         let proyect_widget = StringFieldWidget {
             string_field: &todo_popup.project,
             is_focused: todo_popup.focus == Focus::Project,
         };
+
         frame.render_widget(todo_widget, todo_area);
-        frame.render_widget(info_widget, info_area);
+        frame.render_widget(
+            Paragraph::new("Description").style(Style::new().add_modifier(Modifier::BOLD)),
+            info_label_area,
+        );
+        frame.render_widget(&info_widget, info_value_area);
         frame.render_widget(status_widget, status_area);
         frame.render_widget(due_date_widget, due_date_area);
         frame.render_widget(proyect_widget, proyect_area);
 
         // Cursor position based on focus
-        // In case of focus on Status, the cursor is hidden
+        // In case of focus on Status or DueDate, the cursor is hidden
+        // In case of Info, TextArea sets its own cursor
         let cursor_position = match &todo_popup.focus {
+            Focus::Status | Focus::DueDate | Focus::Info => None,
             Focus::Todo => Some(todo_popup.todo.cursor_position(todo_area)),
-            Focus::Info => Some(todo_popup.info.cursor_position(info_area)),
             Focus::Project => Some(todo_popup.project.cursor_position(proyect_area)),
-            Focus::Status => None,
-            Focus::DueDate => None,
         };
+
         if let Some(position) = cursor_position {
             frame.set_cursor_position(position);
         }

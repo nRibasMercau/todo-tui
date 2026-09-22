@@ -1,4 +1,5 @@
 use chrono::{Local, NaiveDate};
+use ratatui::style::Color;
 use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, Value, ValueRef};
 use std::fmt;
 
@@ -42,6 +43,14 @@ impl Status {
             "in_progress" => Ok(Status::InProgress),
             "done" => Ok(Status::Done),
             _ => Err(format!("Invalid status: {status}")),
+        }
+    }
+
+    pub fn color(self) -> Color {
+        match self {
+            Status::ToDo => Color::White,
+            Status::InProgress => Color::Yellow,
+            Status::Done => Color::Green,
         }
     }
 }
