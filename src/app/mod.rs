@@ -348,17 +348,18 @@ mod tests {
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use rusqlite::Result;
 
-    fn test_db() -> Result<Connection> {
+    fn test_db(empty: bool) -> Result<Connection> {
         let mut conn = Connection::open_in_memory()?;
         migrate(&mut conn)?;
-        conn.execute_batch(
-            "
+        if !empty {
+            conn.execute_batch(
+                "
             INSERT INTO projects (id, name, archived) VALUES (1, 'Project 1', 0);
             INSERT INTO projects (id, name, archived) VALUES (2, 'Project 2', 0);
             INSERT INTO projects (id, name, archived) VALUES (3, 'Project 3', 0);
         ",
-        )?;
-        conn.execute_batch("
+            )?;
+            conn.execute_batch("
             INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (1,   'Todo 1',   'todo 1',     'todo',           1,     NULL,            NULL);
             INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (2,   'Todo 2',   'todo 2',     'in_progress',    1,     NULL,            NULL);
             INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (3,   'Todo 3',   'todo 3',     'in_progress',    2,     NULL,            NULL);
@@ -370,13 +371,14 @@ mod tests {
             INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (9,   'Todo 9',   'todo 9',     'todo',           3,     NULL,            NULL);
             INSERT INTO todos (id, todo, info, status, project_id, due_date, completed_at) VALUES (10,  'Todo 10',  'todo 10',     'done',          3,     '2026-07-01',    '2026-08-01');
         ")?;
+        }
 
         Ok(conn)
     }
 
     #[test]
     fn pressing_a_in_projects_opens_project_popup() -> Result<()> {
-        let conn = test_db()?;
+        let conn = test_db(true)?;
         let mut app = App::new(conn)?;
 
         app.active_panel = ActivePanel::Projects;
@@ -393,7 +395,7 @@ mod tests {
 
     #[test]
     fn pressing_a_in_todos_opens_todo_popup() -> Result<()> {
-        let conn = test_db()?;
+        let conn = test_db(true)?;
         let mut app = App::new(conn)?;
 
         app.active_panel = ActivePanel::Todos;
@@ -410,7 +412,7 @@ mod tests {
 
     #[test]
     fn pressing_enter_in_todos_opens_todo_popup() -> Result<()> {
-        let conn = test_db()?;
+        let conn = test_db(false)?;
         let mut app = App::new(conn)?;
 
         app.active_panel = ActivePanel::Todos;
@@ -425,7 +427,7 @@ mod tests {
 
     #[test]
     fn pressing_enter_in_projects_opens_project_popup() -> Result<()> {
-        let conn = test_db()?;
+        let conn = test_db(false)?;
         let mut app = App::new(conn)?;
 
         app.active_panel = ActivePanel::Projects;
@@ -440,7 +442,7 @@ mod tests {
 
     #[test]
     fn selecting_a_project_filters_todos() -> Result<()> {
-        let conn = test_db()?;
+        let conn = test_db(false)?;
         let mut app = App::new(conn)?;
 
         app.select_project(Some(1))?;
@@ -454,6 +456,91 @@ mod tests {
         actual = app.todo_table.items.iter().map(|todo| todo.id).collect();
         actual.sort();
         assert_eq!(actual, vec![6, 7, 8, 9, 10]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn submitting_todo_creates_todo() -> Result<()> {
+        let conn = test_db(true)?;
+        let mut app = App::new(conn)?;
+
+        app.create_todo(NewTodo {
+            todo: String::from("My todo"),
+            info: String::from("My todo info"),
+            status: Status::ToDo,
+            project: Some(String::from("My project")),
+            due_date: None,
+        })?;
+
+        let todo = &app.todo_table.items[0];
+        let todo_id = todo.id;
+        let todo_project_id = todo.project_id;
+        assert_eq!(todo_id, 1);
+        assert_eq!(todo_project_id, Some(1));
+
+        let project_id = match &app.projects.items[1] {
+            ProjectListItem::Project(project) => project.id,
+            ProjectListItem::All => panic!("expected a project"),
+        };
+        assert_eq!(project_id, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn submitting_project_creates_project() -> Result<()> {
+        let conn = test_db(true)?;
+        let mut app = App::new(conn)?;
+
+        app.create_project(NewProject {
+            name: String::from("My project"),
+        })?;
+
+        let project_id = match &app.projects.items[1] {
+            ProjectListItem::Project(project) => project.id,
+            ProjectListItem::All => panic!("expected a project"),
+        };
+        assert_eq!(project_id, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn submitting_project_edits_existing_project() -> Result<()> {
+        let conn = test_db(true)?;
+        let mut app = App::new(conn)?;
+
+        app.create_project(NewProject {
+            name: String::from("My project"),
+        })?;
+
+        let project_id = match &app.projects.items[1] {
+            ProjectListItem::Project(project) => project.id,
+            ProjectListItem::All => panic!("expected a project"),
+        };
+
+        let project_name = match &app.projects.items[1] {
+            ProjectListItem::Project(project) => &project.name,
+            ProjectListItem::All => panic!("expected a project"),
+        };
+
+        assert_eq!(project_name, "My project");
+
+        app.update_project(
+            project_id,
+            ProjectFormData {
+                name: String::from("My updated project"),
+                archived: false,
+            },
+        )?;
+
+        let project_name = match &app.projects.items[1] {
+            ProjectListItem::Project(project) => &project.name,
+            ProjectListItem::All => panic!("expected a project"),
+        };
+
+        assert_eq!(project_name, "My updated project");
 
         Ok(())
     }
