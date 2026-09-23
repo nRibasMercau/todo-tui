@@ -3,7 +3,7 @@ use crate::models::todo::Status;
 use crate::ui::styles::{ACTIVE, INACTIVE};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Span;
 use ratatui::widgets::{Block, BorderType, Borders, Padding, Row, Table};
 
@@ -46,7 +46,6 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         ])
     });
 
-    let footer = Row::new(["Todos table"]);
     let widths = [
         Constraint::Percentage(1),
         Constraint::Percentage(10),
@@ -66,7 +65,6 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 .border_style(style),
         )
         .header(header)
-        .footer(footer.italic())
         .column_spacing(1)
         .style(Color::White)
         .row_highlight_style(

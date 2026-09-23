@@ -61,7 +61,7 @@ impl App {
         Ok(Self {
             conn,
             should_quit: false,
-            active_panel: ActivePanel::Todos,
+            active_panel: ActivePanel::Projects,
             projects: ProjectList::new(project_items),
             todo_filter: todo_filter,
             dialog: None,
