@@ -32,20 +32,33 @@ impl ProjectList {
     /// Selects next element in the list
     pub fn select_next(&mut self) {
         if self.items.is_empty() {
-            self.state.select(None)
-        } else {
-            self.state.select_next();
+            self.state.select(None);
+            return;
         }
+
+        let next = match self.state.selected() {
+            Some(i) if i + 1 < self.items.len() => i + 1,
+            _ => 0,
+        };
+
+        self.state.select(Some(next));
     }
 
     /// Selects previous element in the list
     pub fn select_previous(&mut self) {
         if self.items.is_empty() {
-            self.state.select(None)
-        } else {
-            self.state.select_previous();
+            self.state.select(None);
+            return;
         }
+
+        let previous = match self.state.selected() {
+            Some(i) if i > 0 => i - 1,
+            _ => self.items.len() - 1,
+        };
+
+        self.state.select(Some(previous));
     }
+
     pub fn replace_projects(&mut self, projects: Vec<Project>) {
         self.items = std::iter::once(ProjectListItem::All)
             .chain(projects.into_iter().map(ProjectListItem::Project))
