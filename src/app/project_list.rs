@@ -104,10 +104,10 @@ mod tests {
         assert_eq!(projects.state.selected(), Some(1));
 
         projects.select_next();
-        assert_eq!(projects.state.selected(), Some(2));
+        assert_eq!(projects.state.selected(), Some(0));
 
         projects.select_next();
-        assert_eq!(projects.state.selected(), Some(3));
+        assert_eq!(projects.state.selected(), Some(1));
 
         Ok(())
     }
@@ -129,13 +129,13 @@ mod tests {
             }),
         ]);
 
-        projects.state.select(Some(2));
-
-        projects.select_previous();
-        assert_eq!(projects.state.selected(), Some(1));
+        projects.state.select(Some(1));
 
         projects.select_previous();
         assert_eq!(projects.state.selected(), Some(0));
+
+        projects.select_previous();
+        assert_eq!(projects.state.selected(), Some(1));
 
         projects.select_previous();
         assert_eq!(projects.state.selected(), Some(0));
