@@ -406,7 +406,7 @@ mod tests {
     }
 
     #[test]
-    fn pressing_a_in_projects_opens_project_popup() -> Result<()> {
+    fn pressing_n_in_projects_opens_project_popup() -> Result<()> {
         let conn = test_db(true)?;
         let mut app = App::new(conn)?;
 
@@ -414,7 +414,7 @@ mod tests {
 
         update(
             &mut app,
-            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE),
         );
 
         assert!(matches!(app.dialog, Some(Dialog::Project(_))));
