@@ -45,7 +45,8 @@ pub fn get(conn: &Connection, filters: &TodoFilter) -> Result<Vec<Todo>> {
         "
             SELECT t.id, t.todo, t.info, t.status, t.project_id, p.name as project, t.due_date, t.created_at, t.completed_at
             FROM todos t LEFT OUTER JOIN projects p ON t.project_id = p.id
-            WHERE (?1 is NULL OR t.project_id = ?1)
+            WHERE p.archived = 0
+            AND (?1 is NULL OR t.project_id = ?1)
             ORDER BY
             CASE WHEN status = 'in_progress' THEN 1 WHEN status = 'todo' THEN 2 ELSE 3 END asc,
             CASE WHEN due_date IS NULL THEN '9999-12-31' ELSE due_date END asc

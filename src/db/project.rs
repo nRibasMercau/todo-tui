@@ -39,7 +39,7 @@ pub fn get_by_id(conn: &Connection, project_id: i64) -> Result<Project> {
     let mut stmt = conn.prepare(
         "
         SELECT id, name, archived, created_at
-        FROM projects 
+        FROM projects
         WHERE id = ?1",
     )?;
 
@@ -59,6 +59,7 @@ pub fn get(conn: &Connection) -> Result<Vec<Project>> {
         "
         SELECT id, name, archived, created_at
         FROM projects
+        WHERE archived = 0
         ",
     )?;
 

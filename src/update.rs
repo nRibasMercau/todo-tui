@@ -85,7 +85,12 @@ fn update_normal(app: &mut App, key_event: KeyEvent) {
                         app.edit_project(index);
                     }
                 }
-                KeyCode::Char('a') => app.add_project(),
+                KeyCode::Char('n') => app.add_project(),
+                KeyCode::Char('a') => {
+                    if let Some(index) = app.projects.state.selected() {
+                        app.confirm_archive_project(index)
+                    };
+                }
                 KeyCode::Char('d') => {
                     if let Some(index) = app.projects.state.selected() {
                         app.confirm_delete_project(index)
@@ -142,6 +147,13 @@ fn update_confirm(app: &mut App, popup: ConfirmPopup, key_event: KeyEvent) -> Op
                 Err(err) => app.error_message = Some(err.to_string()),
             },
             ConfirmAction::DeleteProject(project_id) => match app.delete_project(project_id) {
+                Ok(()) => {
+                    app.error_message = None;
+                    return None;
+                }
+                Err(err) => app.error_message = Some(err.to_string()),
+            },
+            ConfirmAction::ArchiveProject(project_id) => match app.archive_project(project_id) {
                 Ok(()) => {
                     app.error_message = None;
                     return None;

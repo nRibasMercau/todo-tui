@@ -127,6 +127,22 @@ impl App {
         Ok(())
     }
 
+    pub fn archive_project(&mut self, project_id: ProjectId) -> rusqlite::Result<()> {
+        let current_project = project::get_by_id(&mut self.conn, project_id)?;
+        project::update(
+            &mut self.conn,
+            Project {
+                id: project_id,
+                name: current_project.name,
+                archived: true,
+                created_at: current_project.created_at,
+            },
+        )?;
+        self.reload_projects()?;
+        self.reload_todos()?;
+        Ok(())
+    }
+
     /// Opens dialog for new todo
     pub fn add_todo(&mut self) {
         self.dialog = Some(Dialog::Todo(TodoPopup::new()));
@@ -179,6 +195,19 @@ impl App {
             title: "Delete project".into(),
             message: format!("Delete project\"{}\"?", project.name),
             action: ConfirmAction::DeleteProject(project.id),
+            selected: ConfirmChoice::No,
+        }));
+    }
+
+    pub fn confirm_archive_project(&mut self, index: usize) {
+        let Some(ProjectListItem::Project(project)) = self.projects.items.get(index) else {
+            return;
+        };
+
+        self.dialog = Some(Dialog::Confirm(ConfirmPopup {
+            title: "Archive project".into(),
+            message: format!("Archive project\"{}\"?", project.name),
+            action: ConfirmAction::ArchiveProject(project.id),
             selected: ConfirmChoice::No,
         }));
     }

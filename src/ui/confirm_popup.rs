@@ -23,6 +23,7 @@ pub enum ConfirmChoice {
 pub enum ConfirmAction {
     DeleteProject(ProjectId),
     DeleteTodo(TodoId),
+    ArchiveProject(ProjectId),
 }
 
 impl ConfirmPopup {
