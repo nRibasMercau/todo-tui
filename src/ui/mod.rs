@@ -71,7 +71,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 footer::render(
                     frame,
                     footer_area,
-                    "q/Esc quit   j/k move    n new    d delete   a archive    d delete   Enter edit"
+                    "q/Esc quit   j/k move    n new    a archive    d delete   Enter edit"
                         .to_string(),
                 );
             }
